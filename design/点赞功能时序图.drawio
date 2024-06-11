@@ -1,0 +1,43 @@
+<mxfile host="Electron" modified="2024-06-05T12:07:42.964Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/114.0.5735.289 Electron/25.9.4 Safari/537.36" etag="m8hRn7gUUfJdnSWzISb7" version="22.1.2" type="device">
+  <diagram name="第 1 页" id="sRCuQHIcE-my2NvrJAvb">
+    <mxGraphModel dx="1050" dy="629" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="WXl0XmbTu7f5ReqBkWoB-2" value="" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};participant=umlActor;" parent="1" vertex="1">
+          <mxGeometry x="160" y="320" width="20" height="460" as="geometry" />
+        </mxCell>
+        <mxCell id="WXl0XmbTu7f5ReqBkWoB-3" value="后端服务器" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" parent="1" vertex="1">
+          <mxGeometry x="300" y="320" width="100" height="450" as="geometry" />
+        </mxCell>
+        <mxCell id="lUClnNs3Yzc0p9DSXut_-3" value="" style="html=1;points=[[0,0,0,0,5],[0,1,0,0,-5],[1,0,0,0,5],[1,1,0,0,-5]];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="WXl0XmbTu7f5ReqBkWoB-3">
+          <mxGeometry x="45" y="90" width="10" height="310" as="geometry" />
+        </mxCell>
+        <mxCell id="lUClnNs3Yzc0p9DSXut_-1" value="缓存数据库" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="1">
+          <mxGeometry x="510" y="320" width="100" height="450" as="geometry" />
+        </mxCell>
+        <mxCell id="lUClnNs3Yzc0p9DSXut_-5" value="" style="html=1;points=[[0,0,0,0,5],[0,1,0,0,-5],[1,0,0,0,5],[1,1,0,0,-5]];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="lUClnNs3Yzc0p9DSXut_-1">
+          <mxGeometry x="45" y="100" width="10" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="lUClnNs3Yzc0p9DSXut_-2" value="数据库" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="1">
+          <mxGeometry x="740" y="320" width="100" height="450" as="geometry" />
+        </mxCell>
+        <mxCell id="lUClnNs3Yzc0p9DSXut_-4" value="点赞/取消点赞" style="html=1;verticalAlign=bottom;startArrow=oval;endArrow=block;startSize=8;curved=0;rounded=0;entryX=0;entryY=0;entryDx=0;entryDy=5;" edge="1" target="lUClnNs3Yzc0p9DSXut_-3" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="170" y="415" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lUClnNs3Yzc0p9DSXut_-6" value="查询" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;entryX=0;entryY=0;entryDx=0;entryDy=5;" edge="1" target="lUClnNs3Yzc0p9DSXut_-5" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="425" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lUClnNs3Yzc0p9DSXut_-7" value="return" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;curved=0;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=-5;" edge="1" source="lUClnNs3Yzc0p9DSXut_-5" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="495" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
