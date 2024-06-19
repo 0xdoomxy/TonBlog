@@ -1,6 +1,6 @@
 
 
-import { About,Main } from "../page";
+import { About,Main,Article } from "../page";
 
 
 const routes = [
@@ -11,6 +11,10 @@ const routes = [
 {
     path:"home",
     element:<Main/>,
+},
+{
+    path:"/article/:articleId",
+    element:<Article/>,
 }
 ];
 

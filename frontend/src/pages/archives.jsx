@@ -39,7 +39,7 @@ const Archives =()=>{
         <div className="w-full h-full">
                {/* header信息 */}
                <div className="w-full fixed z-10">
-               <div className="  bg-slate-50 w-full border-b-2 h-12 flex justify-evenly md:justify-center items-center ">
+               <div className="bg-slate-50 w-full border-b-2 h-12 flex justify-evenly md:justify-center items-center ">
                 <div  className=" w-1/4 flex justify-center   items-center py-2">
                 <h1 className=" flex align-middle font-serif text-wrap h-full text-xl md:text-3xl cursor-pointer"  onClick={()=>{window.location.href="https://github.com/0xdoomxy"}}>0xdoomxy</h1>
                 </div>

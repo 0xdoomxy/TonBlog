@@ -76,7 +76,7 @@ const About = ()=>{
                 <div className="pl-6 pt-6 h-full flex flex-col">
                     <div className="flex flex-col">
                         <h1 className=" font-serif font-semibold md:text-xl pb-2">简&nbsp;&nbsp;&nbsp;&nbsp;介</h1>
-                        <div className=" font-serif indent-4">本科就读于区块链工程专业,主要研究方向有区块链、云原生、全栈开发,技术栈为Golang、JavaScript、Solidity。</div>
+                        <div className=" font-serif indent-4">本科就读于区块链工程专业,主要研究方向有区块链、云原生、全栈开发,技术栈为Golang、JavaScript、Solidity、java。</div>
                     </div>
                     <div className="w-full pl-4 h-full flex justify-start items-center">
                             <Steps items={[{date:111,title:"您好",content:"hello"},{date:111,title:"您好",content:"hello"}]}/>
