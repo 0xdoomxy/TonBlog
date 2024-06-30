@@ -1,8 +1,10 @@
 import React, { useEffect,useState } from "react";
 
+import Constants from "../util/constants";
 
 import { useNavigate } from "react-router-dom";
 import { Search } from "../components";
+import agent from "../agent/agent";
 
 const Home = ()=>{
     const defaultTagsViewNum =3
@@ -16,23 +18,7 @@ const Home = ()=>{
             Target:"/about"
         },{Name:"Archieve",Target:"/archieve"}]
      //所有的标签列表       
-    const [allTags,setAllTags]=useState([{
-            Name:"React",
-            Key:"React",
-            Number:0,
-        },{
-            Name:"Ethereum",
-            Key:"Ethereum",
-            Number:1000,
-        },{
-            Name:"Solidity",
-            key:"Solidity",
-            Number:23441,
-        },{
-            Name:"Go",
-            key:"Go",
-            Number:2341,
-        }])
+    const [allTags,setAllTags]=useState([])
      //当前可见的标签数量   
     const [curTagViewNum,setCurTagViewNum]=useState(defaultTagsViewNum);
     //所有可见的标签列表    
@@ -40,9 +26,9 @@ const Home = ()=>{
     //可见标签列表
     const [tags,setTags]=useState([]);
     //最新文章列表
-    const [newArticles,setNewArticles]=useState([{id:1,title:"如何在kubernetes里面自定义CRD",accessnum:0,createtime:new Date().toUTCString(),tags:["区块链","以太坊",'Go','solidity'],author:"oxdoomxy"},{id:2,title:"KubeCon EU 2024 透明度报告解读",createtime:new Date().toUTCString(),tags:["区块链","以太坊",'Go','solidity'],author:"oxdoomxy",accessnum:0}]);
+    const [newArticles,setNewArticles]=useState([]);
     //热门文章列表
-    const [hotAriticles,setHotArticles]=useState([{id:1,title:"如何在kubernetes里面自定义CRD",accessnum:100232,createtime:new Date().toUTCString(),tags:["区块链","以太坊",'Go','solidity'],author:"oxdoomxy"},{id:2,title:"KubeCon EU 2024 透明度报告解读",createtime:new Date().toUTCString(),tags:["区块链","以太坊",'Go','solidity'],author:"oxdoomxy",accessnum:1000}]);
+    const [hotAriticles,setHotArticles]=useState([]);
     //是否需要更换header显示
     const [changeHeader,setChangeHeader]=useState(false);
     //小屏幕点击事件，用来显示菜单栏
@@ -52,9 +38,71 @@ const Home = ()=>{
     useEffect(()=>{
         setTags(allTags.slice(0,curTagViewNum));
     },[curTagViewNum])
-
+    function searchArticle(target){
+        agent.Article.Search(target.target.value,1,Constants.PageSize).then((data)=>{
+            console.log(data);
+            if(!data.status){
+                alert("failed",data.message);
+                return;
+            }
+            setNewArticles(data.data.articles.map((item)=>{
+                item.tags = item.tags.split(",");
+                item.create_time = new Date(item.create_time).toLocaleDateString("zh-CN", {timeZone: "Asia/Shanghai", year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'});
+                return item;
+            }));
+        })
+    }
+    
     //组件初始化的时候执行的函数
     useEffect(()=>{
+        //初始化热门文章
+        agent.Article.FindMaxAccess(1,Constants.PageSize).then((data)=>{
+            if(!data.status){
+                alert("failed",data.message);
+                return;
+            }
+            setHotArticles(data.data.articles.map((item)=>{
+                item.tags = item.tags.split(",");
+                item.create_time = new Date(item.create_time).toLocaleDateString("zh-CN", {timeZone: "Asia/Shanghai",year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'})
+                return item;
+            }));
+        })
+        //初始化最新文章
+        agent.Article.FindNewest(1,Constants.PageSize).then((data)=>{
+            if(!data.status){
+                alert("failed",data.message);
+                return;
+            }
+            setNewArticles(data.data.articles.map((item)=>{
+                item.tags = item.tags.split(",");
+                item.create_time = new Date(item.create_time).toLocaleDateString("zh-CN", {timeZone: "Asia/Shanghai", year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'});
+                return item;
+            }));
+        })
+        //初始化所有标签
+        agent.Tag.GetAllTags().then((data)=>{
+            if(!data.status){
+                alert("failed",data.message);
+                return;
+            }
+            setAllTags(data.data);
+        })
+        //监听鼠标滚动事件来改变header
             const checkScroll =()=>{
                 if(window.scrollY >200){
                     setChangeHeader(true);
@@ -94,7 +142,7 @@ const Home = ()=>{
 </div>
                         </div>
                 </div></div>)}
-                {changeHeader&&<Search/>}
+                {changeHeader&&<Search  onKeyDown={searchArticle}/>}
                 {/* 小屏幕显示 */}
                 <div className=" flex  pl-12 justify-center items-center  w-1/3 md:hidden ">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 cursor-pointer" onClick={()=>{setShowSmallNav(!showSmallNav)}}>
@@ -112,21 +160,21 @@ const Home = ()=>{
                 <div className=" w-1/10"></div>
                 <div className=" w-4/5 pt-8 ">
                     <div className="grid grid-flow-row grid-cols-3  md:grid-cols-6 gap-10">
-                    {tags.slice(0,curTagViewNum).map((item,index)=>(
-                        <div  className=" my-3 min-h-8 h-8  min-w-24 max-w-28 justify-center rounded-xl flex  text-center text-lg cursor-pointer  " key={"tag"+index}>
+                    {tags.slice(0,curTagViewNum).map((item,_)=>(
+                        <div  className=" my-3 min-h-8 h-8  min-w-24 max-w-28 justify-center rounded-xl flex  text-center text-lg cursor-pointer  " key={"tag"+item.ID}>
                             <p className="hover:text-blue-500 text-sm font-semibold">{item.Name}</p>
-                            <div className="min-w-6 min-h-3 h-4 bg-stone-200  text-xs rounded-lg ">{item.Number}</div>
+                            <div className="min-w-6 min-h-3 h-4 bg-stone-200  text-xs rounded-lg ">{item.ArticleNum}</div>
                         </div>
                     ))}
                     </div>
-                    <div  className="w-full flex justify-end cursor-pointer" onClick={showAllTagsOnclick}>
+                    {tags.length>curTagViewNum?<div  className="w-full flex justify-end cursor-pointer" onClick={showAllTagsOnclick}>
                      {openAllTags?<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
 <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
 </svg>
 :<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
 <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
 </svg>}
-</div>
+</div>:<></>}
 <div className=" w-full mt-8">
     <div className="w-full flex justify-between items-center py-6 ">
     <p className=" font-serif font-semibold text-3xl  text-center">最新文章</p>
@@ -141,14 +189,14 @@ const Home = ()=>{
         <div className="flex w-2/3 flex-col justify-center">
         <p className=" font-serif md:text-2xl py-1">{item.title}</p>
         <div className=" flex py-1">
-        {item.tags.map((tag,index)=>(<div key={"tag"+index} className={"md:min-w-16 w-16 min-h-5  font-semibold items-center flex justify-center mx-1 "+labelColorList[index%labelColorList.length]+" text-xs rounded-lg"}>{tag}</div>) )}
+        {item.tags!=null &&item.tags.length>0&&item.tags.map((tag,index)=>(<div key={"tag"+index} className={"md:min-w-16 w-16 min-h-5  font-semibold items-center flex justify-center mx-1 "+labelColorList[index%labelColorList.length]+" text-xs rounded-lg"}>{tag}</div>) )}
         </div>
-        <div className=" font-normal text-md">{item.author}</div>
-        <div  className=" font-normal text-sm">{item.createtime}</div>
+        <div className=" font-normal text-md">{item.creator}</div>
+        <div  className=" font-normal text-sm">{item.create_time}</div>
         </div>
         <div className=" flex justify-center w-1/3 items-center flex-col">
             <button className=" w-20 h-12 border-2 rounded-xl hover:bg-blue-100" onClick={()=>navigate("/article/"+item.id)}>阅读</button>
-            <div className=" font-serif text-ellipsis text-sm">浏览量:{item.accessnum}</div>
+            <div className=" font-serif text-ellipsis text-sm">浏览量:{item.access_num}</div>
         </div>
     </div>))}
 
@@ -167,14 +215,14 @@ const Home = ()=>{
         <div className="flex flex-col w-2/3 justify-center ">
         <p className=" font-serif md:text-2xl py-1">{item.title}</p>
         <div className=" flex py-1">
-        {item.tags.map((tag,index)=>(<div key={"tag"+index} className={"md:min-w-16 w-16 min-h-5  font-semibold items-center flex justify-center mx-1 "+labelColorList[index%labelColorList.length]+" text-xs rounded-lg"}>{tag}</div>) )}
+        {item.tags!=null &&item.tags.length>0&&item.tags.map((tag,index)=>(<div key={"tag"+index} className={"md:min-w-16 w-16 min-h-5  font-semibold items-center flex justify-center mx-1 "+labelColorList[index%labelColorList.length]+" text-xs rounded-lg"}>{tag}</div>) )}
         </div>
-        <div className=" font-normal text-md">{item.author}</div>
-        <div  className=" font-normal text-sm">{item.createtime}</div>
+        <div className=" font-normal text-md">{item.creator}</div>
+        <div  className=" font-normal text-sm">{item.create_time}</div>
         </div>
         <div className=" flex justify-center w-1/3 items-center flex-col">
             <button className=" w-20 h-12 border-2 rounded-xl hover:bg-blue-100" onClick={()=>navigate("/article/"+item.id)}>阅读</button>
-            <div className=" font-serif text-ellipsis text-sm">浏览量:{item.accessnum}</div>
+            <div className=" font-serif text-ellipsis text-sm">浏览量:{item.access_num}</div>
         </div>
     </div>))}
 </div>

@@ -14,7 +14,7 @@ const routes = [
 },
 {
     path:"/article/:articleId",
-    element:<Article/>,
+    element:<Article />,
 }
 ];
 

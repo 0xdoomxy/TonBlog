@@ -1,8 +1,8 @@
-import React,{useEffect} from 'react'
+import React from 'react'
 
 
 
-const Search = (onKeyDown) => {
+const Search = ({onKeyDown}) => {
     return(
         <div className="w-full h-full flex justify-end md:justify-center items-center">
                     <div className=" h-4/5 w-4/5 border-2 flex justify-between  items-center rounded-2xl mr-2 ">
@@ -11,7 +11,7 @@ const Search = (onKeyDown) => {
 <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
 </svg>
 </div>
-                    <input  type="input" onKeyDown={onKeyDown}  className="pl-8 bg-slate-50 w-full rounded-2xl h-full">
+                    <input  type="input" onKeyDown={(target)=>onKeyDown(target)}  className="pl-8 bg-slate-50 w-full rounded-2xl h-full">
                     </input>
                     </div>
                 </div>
