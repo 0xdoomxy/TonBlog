@@ -14,10 +14,11 @@ var cache sync.Map = sync.Map{}
 
 func init() {
 	var err error
-	ossclient, err = oss.New(viper.GetString("OSS.Endpoint"), viper.GetString("OSS.AccessKeyID"), viper.GetString("OSS.AccessKeySecret"))
+	ossclient, err = oss.New(viper.GetString("oss.endpoint"), viper.GetString("oss.accesskeyid"), viper.GetString("oss.accesskeysecret"))
 	if err != nil {
 		logrus.Fatal("阿里云 oss client 初始化失败", err.Error())
 	}
+	logrus.Info("阿里云 oss client 初始化成功")
 }
 
 func GetBucket(bucketName string) *oss.Bucket {

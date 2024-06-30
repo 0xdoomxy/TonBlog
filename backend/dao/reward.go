@@ -56,3 +56,8 @@ func (r *reward) FindRewardByArticleId(articleId uint) (rewards []Reward, err er
 	err = db.GetMysql().Model(&Reward{}).Where("article_id = ?", articleId).Find(&rewards).Error
 	return
 }
+
+func (r *reward) FindRewardByUserId(userId uint) (rewards []Reward, err error) {
+	err = db.GetMysql().Model(&Reward{}).Where("user_id = ?", userId).Find(&rewards).Error
+	return
+}

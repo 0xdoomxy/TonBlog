@@ -2,21 +2,104 @@ package dao
 
 import (
 	"blog/dao/db"
+	"blog/utils/es"
 	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"strconv"
+	"strings"
+	"time"
 
+	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/esapi"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
 
-var articleContentBucketName = "0xdoomxy-blog"
+var articleContentBucketName string
 
 func init() {
+	articleContentEsIndex := viper.GetString("article.contentsearchindex")
 	db.GetMysql().AutoMigrate(&Article{})
+	//init elasticsearch index and mapper
+	es := db.GetElasticsearch()
+	var err error
+	var resp *esapi.Response
+	resp, err = es.Indices.Exists([]string{articleContentEsIndex})
+	if err != nil {
+		logrus.Panic("check the index exist failed:", err.Error())
+	}
+	if resp.IsError() {
+		// elasticsearch schema
+		mapping := `{
+			"settings":{
+				"number_of_shards":3,
+				"number_of_replicas":1,
+				"analysis": {
+					"analyzer": {
+						"comma": {
+							"type": "pattern",
+							"pattern": ","
+						}
+					}
+				},
+				"mappings":{
+					"properties":{
+						"content":{
+							"type":"text",
+							"analyzer": "ik_max_word"
+						},
+						"tags":{
+							"type":"text",
+							"analyzer": "comma"
+						},
+						"title":{
+							"type":"text",
+							"analyzer": "ik_max_word"
+						}
+					}
+				}
+			},
+			"mappings":{
+				"properties":{
+					"content":{
+						"type":"text",
+						"analyzer": "ik_max_word"
+					},
+					"tags":{
+						"type":"text",
+						"analyzer": "comma"
+					},
+					"title":{
+						"type":"text",
+						"analyzer": "ik_max_word"
+					}
+				}
+			}
+		}`
+		resp, err = es.Indices.Create(articleContentEsIndex, es.Indices.Create.WithBody(strings.NewReader(mapping)))
+		if err != nil {
+			logrus.Panicf("create the index %s mapper %s failed: %s", articleContentEsIndex, mapping, err.Error())
+		}
+		if resp.IsError() {
+			logrus.Panicf("create the index %s mapper %s failed: %s", articleContentEsIndex, mapping, resp.String())
+		}
+	}
+	articleDao.searchEngine = es
+	articleDao.esIndex = articleContentEsIndex
+	articleDao.cachems = viper.GetInt64("cache.cleaninterval")
+	articleDao.cachekeyPrefix = viper.GetString("article.cachekeyPrefix")
 }
 
 type article struct {
+	searchEngine   *elasticsearch.Client
+	esIndex        string
+	cachems        int64
+	cachekeyPrefix string
 }
 
 var articleDao = &article{}
@@ -33,61 +116,163 @@ func GetArticle() *article {
 type Article struct {
 	gorm.Model
 	Title   string `gorm:"type:varchar(255);not null"`
-	Tags    string `gorm:"type:varchar(255)"`
+	Tags    string `gorm:"-"`
 	Creator uint   `gorm:"not null"`
-	Summary string `gorm:"type:varchar(255)"`
-	Content []byte `gorm:"-"`
+	Content string `gorm:"typel:text;not null"`
+	Images  string `gorm:"type:varchar(1000)"`
 }
 
-func (a *article) CreateArticle(article *Article) (err error) {
-	err = db.GetBucket(articleContentBucketName).PutObject(strconv.Itoa(int(article.ID)), bytes.NewReader(article.Content))
-	defer func() {
+func (a *article) CreateArticle(ctx context.Context, article *Article) (err error) {
+	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Create(article).Error
+	if err != nil {
+		return
+	}
+	abort := db.GetRedis().Set(ctx, fmt.Sprintf("%s_%d", a.cachekeyPrefix, article.ID), article, time.Millisecond*time.Duration(a.cachems)).Err()
+	if abort != nil {
+		logrus.Errorf("set article %v cache failed: %s", article, err.Error())
+	}
+	return
+}
+
+func (a *article) UpdateArticle(ctx context.Context, article *Article) (err error) {
+	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Where("id = ?", article.ID).Updates(article).Error
+	if err != nil {
+		return
+	}
+	db.GetRedis().Set(ctx, fmt.Sprintf("%s_%d", a.cachekeyPrefix, article.ID), article, time.Millisecond*time.Duration(a.cachems)).Err()
+	return
+}
+func (a *article) DeleteArticle(ctx context.Context, id uint) (err error) {
+	err = db.GetRedis().Del(ctx, fmt.Sprintf("%s_%d", a.cachekeyPrefix, id)).Err()
+	if err != nil {
+		logrus.Errorf("delete the article %d cache failed: %s", id, err.Error())
+		return
+	}
+	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Where("id = ?", id).Delete(&Article{}).Error
+	if err != nil {
+		return
+	}
+	return
+}
+func (a *article) FindArticlePaticalById(ctx context.Context, id uint) (article Article, err error) {
+	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Select("id, title, creator, images,created_at,images").Where("id = ?", id).First(&article).Error
+	return
+}
+func (a *article) FindArticleById(ctx context.Context, id uint) (article Article, err error) {
+	err = db.GetRedis().Get(ctx, fmt.Sprintf("%s_%d", a.cachekeyPrefix, id)).Scan(&article)
+	if err != redis.Nil {
 		if err != nil {
-			db.GetBucket(articleContentBucketName).DeleteObject(strconv.Itoa(int(article.ID)))
+			logrus.Errorf("get article %d cache failed: %s", id, err.Error())
 		}
-	}()
-	err = db.GetMysql().Model(&Article{}).Create(article).Error
+		return
+	}
+	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Where("id = ?", id).First(&article).Error
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (a *article) UpdateArticle(article *Article) (err error) {
-	err = db.GetBucket(articleContentBucketName).PutObject(strconv.Itoa(int(article.ID)), bytes.NewReader(article.Content))
+/*
+*
+通过文章内容，标签构建文章搜素引擎，用于文章搜索这里使用elasticsearch。
+
+*
+*/
+
+func (a *article) BuildArticleSearch(ctx context.Context, article *Article) (err error) {
+	req := esapi.CreateRequest{
+		Index:      a.esIndex,
+		DocumentID: strconv.Itoa(int(article.ID)),
+	}
+	//将文章内容、tags和标题放入req.body中
+	var bd []byte
+	bd, err = json.Marshal(struct {
+		Content string `json:"content"`
+		Tags    string `json:"tags"`
+		Title   string `json:"title"`
+	}{
+		Content: strconv.Quote(article.Content),
+		Tags:    article.Tags,
+		Title:   article.Title,
+	})
+	req.Body = bytes.NewBuffer(bd)
+	var resp *esapi.Response
+	resp, err = req.Do(ctx, a.searchEngine)
 	if err != nil {
+		logrus.Error("build article search failed:", err.Error())
 		return
 	}
-	err = db.GetMysql().Model(&Article{}).Where("id = ?", article.ID).Updates(article).Error
+	if resp.IsError() {
+		logrus.Error("build article search failed:", resp.String())
+		err = &es.ESResponseError{}
+		return
+	}
 	return
 }
-func (a *article) DeleteArticle(id uint) (err error) {
-	err = db.GetMysql().Model(&Article{}).Where("id = ?", id).Delete(&Article{}).Error
+
+func (a *article) SearchArticleByPage(ctx context.Context, keyword string, page, size int) (articlesid []uint64, total uint, err error) {
+	var req esapi.SearchRequest
+	a.searchEngine.Search()
+	req.Index = []string{a.esIndex}
+	req.Body = strings.NewReader(`
+		{
+		   "query":{
+			 "multi_match": {
+			   "query": "` + keyword + `",
+			   "fields": ["content^1","title^3","tags^10"]
+			 }
+		   },
+		   "_source": false, 
+		   "from":` + strconv.Itoa((page-1)*size) + `,
+		   "size":` + strconv.Itoa(size) + `
+		}
+		`)
+	var resp *esapi.Response
+	resp, err = req.Do(ctx, a.searchEngine)
 	if err != nil {
+		logrus.Error("search article failed:", err.Error())
 		return
 	}
-	err = db.GetBucket(articleContentBucketName).DeleteObject(strconv.Itoa(int(id)))
+	if resp.IsError() {
+		logrus.Error("search article failed:", resp.String())
+		err = &es.ESResponseError{}
+		return
+	}
+	var byt []byte
+	byt, err = io.ReadAll(resp.Body)
+	if err != nil {
+		logrus.Error("read response body failed:", err.Error())
+		return
+	}
+	resp.Body.Close()
+	var re *es.SearchResult = new(es.SearchResult)
+	err = json.Unmarshal(byt, re)
+	if err != nil {
+		logrus.Error("unmarshal response body failed:", err.Error())
+		return
+	}
+	total = uint(re.Hits.TotalHits.Value)
+	articlesid = make([]uint64, len(re.Hits.Hits))
+	result := re.Hits.Hits
+	for i, hit := range result {
+		articlesid[i], err = strconv.ParseUint(hit.Id, 10, 64)
+		if err != nil {
+			logrus.Error("parse article id failed:", err.Error())
+			return
+		}
+	}
 	return
 }
-func (a *article) FindArticlePaticalById(id uint) (article Article, err error) {
-	err = db.GetMysql().Model(&Article{}).Where("id = ?", id).First(&article).Error
-	return
-}
-func (a *article) FindArticleById(id uint) (article Article, err error) {
-	err = db.GetMysql().Model(&Article{}).Where("id = ?", id).First(&article).Error
+
+func (a *article) FindArticlePaticalByCreateTime(ctx context.Context, page, size int) (articles []*Article, total int64, err error) {
+	storage := db.GetMysql()
+	err = storage.WithContext(ctx).Model(&Article{}).Count(&total).Error
 	if err != nil {
 		return
 	}
-	var reader io.ReadCloser
-	reader, err = db.GetBucket(articleContentBucketName).GetObject(strconv.Itoa(int(article.ID)))
+	err = storage.WithContext(ctx).Model(&Article{}).Select("id, title, creator, images,created_at,images").Order("created_at desc").Offset((page - 1) * size).Limit(size).Find(&articles).Error
 	if err != nil {
-		logrus.Error("获取文章内容失败", err.Error())
-		return
-	}
-	defer reader.Close()
-	article.Content, err = io.ReadAll(reader)
-	if err != nil {
-		logrus.Error("读取文章内容失败", err.Error())
 		return
 	}
 	return

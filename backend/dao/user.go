@@ -28,8 +28,9 @@ func GetUser() *user {
 */
 type User struct {
 	gorm.Model
-	Address string `gorm:"type:varchar(256);not null"`
-	Alias   string `gorm:"type:varchar(255);not null"`
+
+	string `gorm:"type:varchar(256);not null"`
+	Alias  string `gorm:"type:varchar(255);not null"`
 }
 
 func (u *user) CreateUser(user *User) (err error) {
