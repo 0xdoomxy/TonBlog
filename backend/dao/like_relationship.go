@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"reflect"
 	"strconv"
 	"sync"
 	"syscall"
@@ -27,6 +28,7 @@ const (
 		removed = redis.call('ZRANGE', key, 0, length-limit-1)
     	redis.call('ZREMRANGEBYRANK', key, 0, length-limit-1)
 	end
+	return removed
 	`
 	//在程序结束时候执行的脚本用来将redis里面的数据存储到mysql
 	finalizeScript = `
@@ -50,7 +52,8 @@ func init() {
 				cache := db.GetRedis()
 				var res any
 				var err error
-				var userids []string
+
+				var userids []any
 				var ok bool
 				for articleid := range likeRelationshipDao.times {
 					res, err = cache.Eval(context.Background(), finalizeScript, []string{fmt.Sprintf("%s_%d", likeRelationshipDao.cacheKeyPrefix, articleid)}).Result()
@@ -58,9 +61,9 @@ func init() {
 						logrus.Errorf("dump the like relationship failed: %v", err)
 						continue
 					}
-					userids, ok = res.([]string)
+					userids, ok = res.([]any)
 					if !ok {
-						logrus.Errorf("dump the like relationship failed: %v", res)
+						logrus.Errorf("dump the like relationship failed: %v,type:%v", res, reflect.TypeOf(res))
 						continue
 					}
 					if len(userids) <= 0 {
@@ -70,7 +73,7 @@ func init() {
 					var models = make([]*LikeRelationship, len(userids))
 					var userid int
 					for i, useridStr := range userids {
-						userid, err = strconv.Atoi(useridStr)
+						userid, err = strconv.Atoi(useridStr.(string))
 						if err != nil {
 							logrus.Errorf("dump the like relationship failed: %v", err)
 							return
@@ -88,6 +91,7 @@ func init() {
 						logrus.Errorf("dump the like relationship failed: %v", err)
 					}
 				}
+
 			default:
 				time.Sleep(time.Second * 5)
 			}
@@ -118,10 +122,12 @@ func newLikeRelationshipDao() (res *likeRelationship) {
 		cache := db.GetRedis()
 		res, err := cache.Eval(context.Background(), likeScript, []string{fmt.Sprintf("%s_%d", res.cacheKeyPrefix, articleid)}, maxcount).Result()
 		if err != nil {
-			logrus.Errorf("dump the like relationship failed: %v", err)
+			if err != redis.Nil {
+				logrus.Errorf("dump the like relationship failed: %v", err)
+			}
 			return
 		}
-		userids, ok := res.([]string)
+		userids, ok := res.([]any)
 		if !ok {
 			logrus.Errorf("dump the like relationship failed: %v", res)
 			return
@@ -133,7 +139,7 @@ func newLikeRelationshipDao() (res *likeRelationship) {
 		var models = make([]*LikeRelationship, len(userids))
 		var userid int
 		for i, useridStr := range userids {
-			userid, err = strconv.Atoi(useridStr)
+			userid, err = strconv.Atoi(useridStr.(string))
 			if err != nil {
 				logrus.Errorf("dump the like relationship failed: %v", err)
 				return
@@ -146,7 +152,10 @@ func newLikeRelationshipDao() (res *likeRelationship) {
 		if err != nil {
 			return
 		}
-		storage.Model(&likeRelationship{}).CreateInBatches(&models, (len(models)/100)+1)
+		err = storage.Model(&LikeRelationship{}).CreateInBatches(&models, (len(models)/100)+1).Error
+		if err != nil {
+			logrus.Errorf("dump the like relationship %v failed: %v", models, err)
+		}
 	}
 	res.dumpFunc = sync.Pool{
 		New: func() any {
@@ -186,12 +195,12 @@ func (l *likeRelationship) CreateLikeRelationship(ctx context.Context, likeRelat
 		/**
 		避免锁竞争
 		**/
-		if *old+1 < l.maxcount {
+		if *old < l.maxcount {
 			*old++
 			return
 		}
 		l.mutex.Lock()
-		if *old+1 < l.maxcount {
+		if *old < l.maxcount {
 			*old++
 			l.mutex.Unlock()
 			return

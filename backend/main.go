@@ -13,7 +13,7 @@ import (
 
 func StartCronTask() {
 	manager := cron.NewCronManager()
-	manager.EquipmentTask(cron.NewAccessConsumerCron())
+	manager.EquipmentTask(cron.NewAccessConsumerCron(), cron.NewLikeConsumerCron())
 	go manager.Run()
 }
 
@@ -42,7 +42,6 @@ func main() {
 	//绑定业务路由
 	bindArticleRoutes(engine)
 	bindLikeRoutes(engine)
-	bindAccessRoutes(engine)
 	bindCommentRoutes(engine)
 	bindUserRoutes(engine)
 	bindRewardRoutes(engine)
@@ -77,19 +76,14 @@ func bindArticleRoutes(engine *gin.Engine) {
 }
 
 func bindLikeRoutes(engine *gin.Engine) {
-	_ = engine.Group("/like")
-	{
-
-	}
+	router := engine.Group("/like")
+	router.GET("/confirm", func(ctx *gin.Context) {
+		controller.GetLike().SetAsLike(ctx)
+	})
+	router.GET("/cancel", func(ctx *gin.Context) {
+		controller.GetLike().CancelLike(ctx)
+	})
 }
-
-func bindAccessRoutes(engine *gin.Engine) {
-	_ = engine.Group("/access")
-	{
-
-	}
-}
-
 func bindCommentRoutes(engine *gin.Engine) {
 	_ = engine.Group("/comment")
 	{

@@ -14,9 +14,11 @@ func GetLike() *like {
 	return likeService
 }
 
+// TODO before set as like ,should make sure the userid is valid
 func (l *like) SetAsLike(ctx context.Context, userid uint, articleid uint) (err error) {
 	likeDAO := dao.GetLike()
 	like_relationshipDAO := dao.GetLikeRelationship()
+
 	like := &dao.Like{
 		ArticleID: articleid,
 		LikeNum:   1,
@@ -38,6 +40,7 @@ func (l *like) SetAsLike(ctx context.Context, userid uint, articleid uint) (err 
 	return
 }
 
+// TODO before set as like ,should make sure the userid is valid
 func (l *like) CancelLike(ctx context.Context, userid uint, articleid uint) (err error) {
 	likeDAO := dao.GetLike()
 	like_relationshipDAO := dao.GetLikeRelationship()

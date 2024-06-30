@@ -4,7 +4,7 @@ import (
 	"blog/dao"
 	"encoding/json"
 	"fmt"
-	"sync"
+	"time"
 
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
@@ -23,7 +23,7 @@ func NewAccessConsumerCron() *accessConsumerCron {
 
 }
 
-func (acc *accessConsumerCron) Run(Done func()) {
+func (acc *accessConsumerCron) Run() {
 	var err error
 	var connection *amqp.Connection
 	dsn := fmt.Sprintf("amqp://%s:%s@%s:%s/", viper.GetString("rabbitmq.username"), viper.GetString("rabbitmq.password"), viper.GetString("rabbitmq.host"), viper.GetString("rabbitmq.port"))
@@ -37,18 +37,10 @@ func (acc *accessConsumerCron) Run(Done func()) {
 	if err != nil {
 		logrus.Fatal("create the rabbitmq channel failed:", err.Error())
 	}
-	// once exactly
-	onceDone := sync.OnceFunc(Done)
 	accessDao := dao.GetAccess()
 	acc.internal.AddJob("*/2 * * * *", cron.FuncJob(func() {
-		defer func() {
-			if r := recover(); r != nil {
-				logrus.Errorf("access consumer panic: %v", r)
-				onceDone()
-			}
-		}()
 		var messages <-chan amqp.Delivery
-		messages, err = channel.Consume(viper.GetString("rabbitmq.accessqueue"), "access_cron_consumer", true, false, false, false, nil)
+		messages, err = channel.Consume(viper.GetString("rabbitmq.accessqueue"), "", true, false, false, false, nil)
 		if err != nil {
 			logrus.Panic("consume the rabbitmq queue failed:", err.Error())
 		}
@@ -57,10 +49,13 @@ func (acc *accessConsumerCron) Run(Done func()) {
 			//TODO level=error msg="consumer unmarshal the access {{0 0}} failed: unexpected end of JSON input"
 			case msg := <-messages:
 				raw := msg.Body
+				if len(raw) <= 0 {
+					return
+				}
 				var access = dao.Access{}
 				err = json.Unmarshal(raw, &access)
 				if err != nil {
-					logrus.Errorf("consumer unmarshal the access {%v} failed: %s", access, err.Error())
+					logrus.Errorf("consumer unmarshal the access {%v} failed: %s", msg.Body, err.Error())
 					continue
 				}
 				err = accessDao.IncrementAccessNumToDB(access)
@@ -69,6 +64,7 @@ func (acc *accessConsumerCron) Run(Done func()) {
 					continue
 				}
 			default:
+				time.Sleep(time.Second * 5)
 			}
 		}
 	}))
