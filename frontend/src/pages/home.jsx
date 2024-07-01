@@ -38,46 +38,18 @@ const Home = ()=>{
     useEffect(()=>{
         setTags(allTags.slice(0,curTagViewNum));
     },[curTagViewNum])
-    function searchArticle(target){
-        agent.Article.Search(target.target.value,1,Constants.PageSize).then((data)=>{
-            console.log(data);
+    //获取所有标签
+    function getAllTags(){
+        agent.Tag.GetAllTags().then((data)=>{
             if(!data.status){
                 alert("failed",data.message);
                 return;
             }
-            setNewArticles(data.data.articles.map((item)=>{
-                item.tags = item.tags.split(",");
-                item.create_time = new Date(item.create_time).toLocaleDateString("zh-CN", {timeZone: "Asia/Shanghai", year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'});
-                return item;
-            }));
+            setAllTags(data.data);
         })
     }
-    
-    //组件初始化的时候执行的函数
-    useEffect(()=>{
-        //初始化热门文章
-        agent.Article.FindMaxAccess(1,Constants.PageSize).then((data)=>{
-            if(!data.status){
-                alert("failed",data.message);
-                return;
-            }
-            setHotArticles(data.data.articles.map((item)=>{
-                item.tags = item.tags.split(",");
-                item.create_time = new Date(item.create_time).toLocaleDateString("zh-CN", {timeZone: "Asia/Shanghai",year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'})
-                return item;
-            }));
-        })
-        //初始化最新文章
+    //获取最新文章
+    function findTheNewestArticle(){
         agent.Article.FindNewest(1,Constants.PageSize).then((data)=>{
             if(!data.status){
                 alert("failed",data.message);
@@ -94,14 +66,36 @@ const Home = ()=>{
                 return item;
             }));
         })
-        //初始化所有标签
-        agent.Tag.GetAllTags().then((data)=>{
+    }
+    /**
+     * 获取热度最高文章
+     */
+    function findTheHotestAritcle(){
+        agent.Article.FindMaxAccess(1,Constants.PageSize).then((data)=>{
             if(!data.status){
                 alert("failed",data.message);
                 return;
             }
-            setAllTags(data.data);
+            setHotArticles(data.data.articles.map((item)=>{
+                item.tags = item.tags.split(",");
+                item.create_time = new Date(item.create_time).toLocaleDateString("zh-CN", {timeZone: "Asia/Shanghai",year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'})
+                return item;
+            }));
         })
+    }
+    //组件初始化的时候执行的函数
+    useEffect(()=>{
+        //初始化热门文章
+        findTheHotestAritcle();
+        //初始化最新文章
+        findTheNewestArticle();
+        //初始化所有标签
+        getAllTags();
         //监听鼠标滚动事件来改变header
             const checkScroll =()=>{
                 if(window.scrollY >200){
@@ -142,7 +136,7 @@ const Home = ()=>{
 </div>
                         </div>
                 </div></div>)}
-                {changeHeader&&<Search  onKeyDown={searchArticle}/>}
+                {changeHeader&&<Search  onKeyDown={(event)=>{if(event.keyCode!==13){return;}if(event.target.value == undefined || event.target.value == null ){return }navigate(`/search?keyword=${event.target.value}`,)}}/>}
                 {/* 小屏幕显示 */}
                 <div className=" flex  pl-12 justify-center items-center  w-1/3 md:hidden ">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 cursor-pointer" onClick={()=>{setShowSmallNav(!showSmallNav)}}>
@@ -161,7 +155,7 @@ const Home = ()=>{
                 <div className=" w-4/5 pt-8 ">
                     <div className="grid grid-flow-row grid-cols-3  md:grid-cols-6 gap-10">
                     {tags.slice(0,curTagViewNum).map((item,_)=>(
-                        <div  className=" my-3 min-h-8 h-8  min-w-24 max-w-28 justify-center rounded-xl flex  text-center text-lg cursor-pointer  " key={"tag"+item.ID}>
+                        <div  className=" my-3 min-h-8 h-8  min-w-24 max-w-28 justify-center rounded-xl flex  text-center text-lg cursor-pointer  " key={"tag"+item.Name}>
                             <p className="hover:text-blue-500 text-sm font-semibold">{item.Name}</p>
                             <div className="min-w-6 min-h-3 h-4 bg-stone-200  text-xs rounded-lg ">{item.ArticleNum}</div>
                         </div>

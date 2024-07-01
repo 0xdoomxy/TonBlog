@@ -4,12 +4,14 @@ import (
 	"blog/dao/db"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/streadway/amqp"
@@ -45,6 +47,7 @@ func init() {
 	accessDao.mqChannel = channel
 	accessDao.exchange = articleExchange
 	accessDao.routingKey = accessQueue
+	accessDao.cacheKey = viper.GetString("access.cachekeyPrefix")
 	go func() {
 		// flush the access cache to rabbitmq
 		ticker := time.NewTicker(2 * time.Minute)
@@ -104,6 +107,7 @@ type access struct {
 	mqChannel  *amqp.Channel
 	exchange   string
 	routingKey string
+	cacheKey   string
 }
 
 var accessDao = &access{
@@ -121,6 +125,14 @@ var accessDao = &access{
 type Access struct {
 	ArticleID uint `gorm:"primaryKey"`
 	AccessNum uint `gorm:"not null"`
+}
+
+func (a *Access) MarshalBinary() ([]byte, error) {
+	return json.Marshal(a)
+}
+
+func (a *Access) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, a)
 }
 
 func GetAccess() *access {
@@ -147,12 +159,36 @@ func (a *access) IncrementAccess(articleId uint, num int) {
 }
 
 func (a *access) FindAccessById(ctx context.Context, id uint) (access Access, err error) {
+	cache := db.GetRedis()
+	key := fmt.Sprintf("%s_%d", a.cacheKey, id)
+	err = cache.Get(ctx, key).Scan(&access)
+	if err != redis.Nil {
+		if err != nil {
+			logrus.Errorf("get access %d from redis failed:%s", id, err.Error())
+		}
+		return
+	}
 	err = db.GetMysql().WithContext(ctx).Model(&Access{}).Where("article_id = ?", id).First(&access).Error
+	if err != nil {
+		logrus.Errorf("get access %d from mysql failed:%s", id, err.Error())
+		return
+	}
+	cache.Set(ctx, key, access, time.Duration(viper.GetInt64("cache.cleaninterval"))*time.Millisecond)
 	return
 }
 
 func (a *access) DeleteAccess(ctx context.Context, id uint) (err error) {
+	cache := db.GetRedis()
+	key := fmt.Sprintf("%s_%d", a.cacheKey, id)
+	err = cache.Del(ctx, key).Err()
+	if err != nil && err != redis.Nil {
+		logrus.Errorf("delete the access %d from redis failed:%s", id, err.Error())
+		return
+	}
 	err = db.GetMysql().WithContext(ctx).Model(&Access{}).Where("article_id = ?", id).Delete(&Access{}).Error
+	if err != nil {
+		logrus.Errorf(" delete the access %d from mysql failed:%s", id, err.Error())
+	}
 	return
 }
 
@@ -166,7 +202,16 @@ func (a *access) FindMaxAccessByPage(ctx context.Context, page, size int) (artic
 	return
 }
 
-func (a *access) IncrementAccessNumToDB(access Access) (err error) {
-
-	return db.GetMysql().Model(&Access{}).Where("article_id = ?", access.ArticleID).Update("access_num", gorm.Expr("access_num + ?", access.AccessNum)).Error
+func (a *access) IncrementAccessNumToDB(ctx context.Context, access Access) (err error) {
+	cache := db.GetRedis()
+	err = cache.Del(ctx, fmt.Sprintf("%s_%d", a.cacheKey, access.ArticleID)).Err()
+	if err != nil && err != redis.Nil {
+		logrus.Errorf("delete the access %d from redis failed:%s", access.ArticleID, err.Error())
+		return
+	}
+	err = db.GetMysql().Model(&Access{}).Where("article_id = ?", access.ArticleID).Update("access_num", gorm.Expr("access_num + ?", access.AccessNum)).Error
+	if err != nil {
+		logrus.Errorf("increment access %v number to db error:%s", access, err.Error())
+	}
+	return
 }

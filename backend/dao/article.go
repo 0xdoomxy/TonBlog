@@ -96,6 +96,7 @@ func init() {
 }
 
 type article struct {
+	_              [0]func()
 	searchEngine   *elasticsearch.Client
 	esIndex        string
 	cachems        int64
@@ -122,6 +123,14 @@ type Article struct {
 	Images  string `gorm:"type:varchar(1000)"`
 }
 
+func (a *Article) MarshalBinary() ([]byte, error) {
+	return json.Marshal(a)
+}
+
+func (a *Article) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, a)
+}
+
 func (a *article) CreateArticle(ctx context.Context, article *Article) (err error) {
 	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Create(article).Error
 	if err != nil {
@@ -135,11 +144,19 @@ func (a *article) CreateArticle(ctx context.Context, article *Article) (err erro
 }
 
 func (a *article) UpdateArticle(ctx context.Context, article *Article) (err error) {
-	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Where("id = ?", article.ID).Updates(article).Error
+	cache := db.GetRedis()
+	key := fmt.Sprintf("%s_%d", a.cachekeyPrefix, article.ID)
+	err = cache.Del(ctx, key).Err()
 	if err != nil {
+		logrus.Errorf("to update article,delete article from redis failed:%s", err.Error())
 		return
 	}
-	db.GetRedis().Set(ctx, fmt.Sprintf("%s_%d", a.cachekeyPrefix, article.ID), article, time.Millisecond*time.Duration(a.cachems)).Err()
+	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Where("id = ?", article.ID).Updates(article).Error
+	if err != nil {
+		logrus.Errorf("update article %v from mysql failed:%s", article, err.Error())
+		return
+	}
+	cache.Set(ctx, key, article, time.Millisecond*time.Duration(a.cachems))
 	return
 }
 func (a *article) DeleteArticle(ctx context.Context, id uint) (err error) {
@@ -155,11 +172,24 @@ func (a *article) DeleteArticle(ctx context.Context, id uint) (err error) {
 	return
 }
 func (a *article) FindArticlePaticalById(ctx context.Context, id uint) (article Article, err error) {
+	cache := db.GetRedis()
+	err = cache.Get(ctx, fmt.Sprintf("%s_%d", a.cachekeyPrefix, id)).Scan(&article)
+	if err != redis.Nil {
+		if err != nil {
+			logrus.Errorf("find article %d from redis failed:%s", id, err.Error())
+		}
+		return
+	}
 	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Select("id, title, creator, images,created_at,images").Where("id = ?", id).First(&article).Error
+	if err != nil {
+		logrus.Errorf("find aritcle partical %d from mysql failed:%s", id, err.Error())
+	}
 	return
 }
 func (a *article) FindArticleById(ctx context.Context, id uint) (article Article, err error) {
-	err = db.GetRedis().Get(ctx, fmt.Sprintf("%s_%d", a.cachekeyPrefix, id)).Scan(&article)
+	cache := db.GetRedis()
+	key := fmt.Sprintf("%s_%d", a.cachekeyPrefix, id)
+	err = cache.Get(ctx, key).Scan(&article)
 	if err != redis.Nil {
 		if err != nil {
 			logrus.Errorf("get article %d cache failed: %s", id, err.Error())
@@ -168,8 +198,10 @@ func (a *article) FindArticleById(ctx context.Context, id uint) (article Article
 	}
 	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Where("id = ?", id).First(&article).Error
 	if err != nil {
+		logrus.Errorf("get article %d from mysql failed: %s", id, err.Error())
 		return
 	}
+	cache.Set(ctx, key, &article, 30*time.Minute)
 	return
 }
 

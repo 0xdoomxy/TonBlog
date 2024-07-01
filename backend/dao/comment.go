@@ -7,6 +7,7 @@ func init() {
 }
 
 type comment struct {
+	_ [0]func()
 }
 
 var commentDao = &comment{}

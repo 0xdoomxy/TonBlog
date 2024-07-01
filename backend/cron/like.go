@@ -24,11 +24,12 @@ func NewLikeConsumerCron() *likeConsumerCron {
 }
 
 func (lcc *likeConsumerCron) Run() {
+	var m = make(map[uint64]uint64)
 	lcc.internal.AddJob("*/2 * * * *", cron.FuncJob(func() {
 		var cache = db.GetRedis()
 		var err error
 		var keys []string
-		cachekeys := fmt.Sprintf("%s*", viper.GetString("like.cachekey"))
+		cachekeys := fmt.Sprintf("%s*", viper.GetString("like.cachekeyPrefix"))
 		keys, err = cache.Keys(context.TODO(), cachekeys).Result()
 		if err != nil {
 			logrus.Errorf("get keys from redis failed: %s", err.Error())
@@ -43,7 +44,7 @@ func (lcc *likeConsumerCron) Run() {
 			if err != nil {
 				continue
 			}
-			articleidStr, found = strings.CutPrefix(key, fmt.Sprintf("%s_", viper.GetString("like.cachekey")))
+			articleidStr, found = strings.CutPrefix(key, fmt.Sprintf("%s_", viper.GetString("like.cachekeyPrefix")))
 			if !found {
 				continue
 			}
@@ -52,10 +53,13 @@ func (lcc *likeConsumerCron) Run() {
 				logrus.Errorf("parse articleid error (articleid:%s,likenum:%d) failed: %s", articleidStr, likenum, err.Error())
 				continue
 			}
-			err = db.GetMysql().Model(&dao.Like{}).Where("article_id = ?", articleid).Update("like_num", likenum).Error
-			if err != nil {
-				logrus.Errorf("update like num (articleid:%d,likenum:%d) failed: %s", articleid, likenum, err.Error())
-				continue
+			if old, ok := m[articleid]; ok && old < likenum {
+				err = db.GetMysql().Model(&dao.Like{}).Where("article_id = ?", articleid).Update("like_num", likenum).Error
+				if err != nil {
+					logrus.Errorf("update like num (articleid:%d,likenum:%d) failed: %s", articleid, likenum, err.Error())
+					continue
+				}
+				m[articleid] = likenum
 			}
 		}
 	}))

@@ -83,6 +83,9 @@ func bindLikeRoutes(engine *gin.Engine) {
 	router.GET("/cancel", func(ctx *gin.Context) {
 		controller.GetLike().CancelLike(ctx)
 	})
+	router.GET("/exist", func(ctx *gin.Context) {
+		controller.GetLike().IsExist(ctx)
+	})
 }
 func bindCommentRoutes(engine *gin.Engine) {
 	_ = engine.Group("/comment")

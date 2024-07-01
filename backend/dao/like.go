@@ -3,6 +3,7 @@ package dao
 import (
 	"blog/dao/db"
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -17,6 +18,7 @@ func init() {
 }
 
 type like struct {
+	_        [0]func()
 	cacheKey string
 	onceMaps map[uint]any
 	rwmutex  sync.RWMutex
@@ -26,7 +28,7 @@ var likeDao *like
 
 func newLikeDao() *like {
 	return &like{
-		cacheKey: viper.GetString("like.cachekey"),
+		cacheKey: viper.GetString("like.cachekeyPrefix"),
 		onceMaps: make(map[uint]any),
 		rwmutex:  sync.RWMutex{},
 	}
@@ -46,6 +48,14 @@ func GetLike() *like {
 type Like struct {
 	ArticleID uint `gorm:"not null;uniqueIndex:search"`
 	LikeNum   uint `gorm:"not null"`
+}
+
+func (like *Like) MarshalBinary() ([]byte, error) {
+	return json.Marshal(like)
+}
+
+func (like *Like) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, like)
 }
 
 func (l *like) initLikeToCache(ctx context.Context, articleId uint) (err error) {
@@ -78,6 +88,7 @@ func (l *like) onceInitLikeToCache(ctx context.Context, articleid uint) (err err
 func (l *like) IncrementLike(ctx context.Context, like *Like) (err error) {
 	err = l.onceInitLikeToCache(ctx, like.ArticleID)
 	if err != nil {
+		logrus.Errorf("init like %v failed:%s", like, err.Error())
 		return
 	}
 	cache := db.GetRedis()
@@ -96,6 +107,7 @@ func (l *like) IncrementLike(ctx context.Context, like *Like) (err error) {
 func (l *like) DecrementLike(ctx context.Context, like *Like) (err error) {
 	err = l.onceInitLikeToCache(ctx, like.ArticleID)
 	if err != nil {
+		logrus.Errorf("init like %v failed:%s", like, err.Error())
 		return
 	}
 	cache := db.GetRedis()
@@ -116,6 +128,7 @@ func (l *like) DecrementLike(ctx context.Context, like *Like) (err error) {
 func (l *like) FindLikeById(ctx context.Context, articleid uint) (like Like, err error) {
 	err = l.onceInitLikeToCache(ctx, articleid)
 	if err != nil {
+		logrus.Errorf("init like %v failed:%s", like, err.Error())
 		return
 	}
 	like = Like{
@@ -139,7 +152,7 @@ func (l *like) FindLikeById(ctx context.Context, articleid uint) (like Like, err
 func (l *like) DeleteLike(ctx context.Context, articleid uint) (err error) {
 	cache := db.GetRedis()
 	err = cache.Del(ctx, fmt.Sprintf("%s_%d", l.cacheKey, articleid)).Err()
-	if err != nil {
+	if err != nil && err != redis.Nil {
 		logrus.Errorf("delete the like %d cache failed: %s", articleid, err.Error())
 		return
 	}

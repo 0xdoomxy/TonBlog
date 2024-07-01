@@ -170,7 +170,7 @@ func (a *article) FindArticleByCreateTime(ctx *gin.Context) {
 
 /*
 *
-根据标签或者关键字搜索文章
+根据关键字搜索文章
 
 *
 */

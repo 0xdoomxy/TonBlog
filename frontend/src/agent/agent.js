@@ -39,9 +39,16 @@ const Article = {
     Search:(keyword,page,pagesize)=>requests.get(`/article/search?page=${encode(page)}&pagesize=${encode(pagesize)}&keyword=${encode(keyword)}`)
 }
 
+const Like = {
+    Add:(articleId,userid)=>requests.get(`/like/confirm?articleid=${encode(articleId)}&userid=${encode(userid)}`),
+    Remove:(articleId,userid)=>requests.get(`/like/cancel?articleid=${encode(articleId)}&userid=${encode(userid)}`),
+    Find:(articleId,userid)=>requests.get(`/like/exist?articleid=${encode(articleId)}&userid=${encode(userid)}`)
+
+}
 
 export default{
     Article,
     Tag,
-    API_ROOT
+    API_ROOT,
+    Like
 }

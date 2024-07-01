@@ -64,3 +64,9 @@ func (l *like) CancelLike(ctx context.Context, userid uint, articleid uint) (err
 	err = like_relationshipDAO.DeleteLikeRelationship(ctx, like_relationship)
 	return
 }
+
+func (l *like) FindIsExist(ctx context.Context, articleid uint, userid uint) (exist bool, err error) {
+	like_relationshipDap := dao.GetLikeRelationship()
+	exist, err = like_relationshipDap.FindLikeRelationshipByArticleIDAndUserid(ctx, &dao.LikeRelationship{ArticleID: articleid, UserID: userid})
+	return
+}

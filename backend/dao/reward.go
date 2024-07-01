@@ -1,12 +1,17 @@
 package dao
 
-import "blog/dao/db"
+import (
+	"blog/dao/db"
+	"encoding/json"
+)
 
 func init() {
 	db.GetMysql().AutoMigrate(&Reward{})
 }
 
-type reward struct{}
+type reward struct {
+	_ [0]func()
+}
 
 var rewardDao = &reward{}
 
@@ -27,6 +32,14 @@ type Reward struct {
 	ArticleID uint   `gorm:"not null;index:searchforarticle"`
 	UserID    uint   `gorm:"not null;index:searchforuser"`
 	Amount    uint   `gorm:"not null"`
+}
+
+func (reward *Reward) MarshalBinary() ([]byte, error) {
+	return json.Marshal(reward)
+}
+
+func (reward *Reward) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, reward)
 }
 
 func (r *reward) CreateReward(reward *Reward) (err error) {

@@ -6,3 +6,5 @@ export {default as Archives}  from "./archives";
 export {default as Article} from './article';
 
 export {default as Create} from './create';
+
+export {default as Search} from "./search";

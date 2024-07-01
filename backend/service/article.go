@@ -302,7 +302,7 @@ func (a *article) SearchArticleByPage(ctx context.Context, keyword string, page 
 	onceError := sync.Once{}
 	wg := sync.WaitGroup{}
 	wg.Add(len(targetIds))
-	articleViews := make([]*ArticleView, len(targetIds))
+	articleViews := make([]*ArticleView, 0, len(targetIds))
 	for _, id := range targetIds {
 		go func(id uint) {
 			defer wg.Done()
