@@ -35,6 +35,15 @@ func GetTag() *tag {
 	return tagDao
 }
 
+type Tags []*Tag
+
+func (tags *Tags) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, tags)
+}
+func (tags *Tags) MarshalBinary() ([]byte, error) {
+	return json.Marshal(tags)
+}
+
 /*
 *
 
@@ -59,6 +68,10 @@ func (t *tag) CreateTag(ctx context.Context, tag *Tag) (err error) {
 	err = db.GetMysql().Model(&Tag{}).WithContext(ctx).Create(tag).Error
 	if err != nil {
 		return
+	}
+	ignoreErr := db.GetRedis().Del(ctx, ALL_TAGS_CACHE_KEY).Err()
+	if ignoreErr != nil {
+		logrus.Errorf("delete all tags from redis failed:%s", ignoreErr.Error())
 	}
 	return
 }
@@ -97,16 +110,21 @@ func (t *tag) DeleteTag(ctx context.Context, name string) (err error) {
 func (t *tag) FindAndIncrementTagNumByName(ctx context.Context, name string, num uint) (err error) {
 	//乐观
 	var needCreate bool = false
+	cache := db.GetRedis()
 	defer func() {
 		if needCreate {
 			err = db.GetMysql().Model(&Tag{}).Create(&Tag{Name: name, ArticleNum: num}).Error
 			if err != nil {
 				logrus.Errorf("create the tag (name:%s) failed:%s", name, err.Error())
+				return
+			}
+			ignoreErr := cache.Del(ctx, ALL_TAGS_CACHE_KEY).Err()
+			if ignoreErr != nil {
+				logrus.Errorf("delete all tags from redis failed:%s", ignoreErr.Error())
 			}
 		}
 	}()
 	key := fmt.Sprintf("%s_%s", t.cachekey, name)
-	cache := db.GetRedis()
 	err = cache.Del(ctx, key).Err()
 	if err != nil && err != redis.Nil {
 		logrus.Errorf("delete tag %s from redis failed:%s", name, err.Error())
@@ -121,7 +139,7 @@ func (t *tag) FindAndIncrementTagNumByName(ctx context.Context, name string, num
 	}
 	return
 }
-func (t *tag) FindAllTags(ctx context.Context) (tags []*Tag, err error) {
+func (t *tag) FindAllTags(ctx context.Context) (tags Tags, err error) {
 	cache := db.GetRedis()
 	err = cache.Get(ctx, ALL_TAGS_CACHE_KEY).Scan(&tags)
 	if err != redis.Nil {
@@ -135,6 +153,9 @@ func (t *tag) FindAllTags(ctx context.Context) (tags []*Tag, err error) {
 		logrus.Errorf("get all tags from  mysql:%s", err.Error())
 		return
 	}
-	cache.Set(ctx, ALL_TAGS_CACHE_KEY, &tags, 0)
+	ignoreErr := cache.Set(ctx, ALL_TAGS_CACHE_KEY, &tags, 0).Err()
+	if ignoreErr != nil {
+		logrus.Errorf("all tags set the redis error :%s", ignoreErr.Error())
+	}
 	return
 }

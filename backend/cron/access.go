@@ -39,8 +39,6 @@ func (acc *accessConsumerCron) Run() {
 		logrus.Fatal("create the rabbitmq channel failed:", err.Error())
 	}
 	accessDao := dao.GetAccess()
-	// cache the pre access in order to reduce the mysql connection
-	var m = make(map[uint]uint)
 	acc.internal.AddJob("*/2 * * * *", cron.FuncJob(func() {
 		var messages <-chan amqp.Delivery
 		messages, err = channel.Consume(viper.GetString("rabbitmq.accessqueue"), "", true, false, false, false, nil)
@@ -61,13 +59,10 @@ func (acc *accessConsumerCron) Run() {
 					logrus.Errorf("consumer unmarshal the access {%v} failed: %s", msg.Body, err.Error())
 					continue
 				}
-				if old, ok := m[access.ArticleID]; ok && old < access.AccessNum {
-					err = accessDao.IncrementAccessNumToDB(context.TODO(), access)
-					if err != nil {
-						logrus.Errorf("increment the access {%v} num to db failed: %s", access, err.Error())
-						continue
-					}
-					m[access.ArticleID] = access.AccessNum
+				err = accessDao.IncrementAccessNumToDB(context.TODO(), access)
+				if err != nil {
+					logrus.Errorf("increment the access {%v} num to db failed: %s", access, err.Error())
+					continue
 				}
 			default:
 				time.Sleep(time.Second * 5)

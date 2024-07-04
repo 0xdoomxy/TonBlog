@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -81,11 +82,10 @@ func (a *article) DownloadImage(filename string) (res []byte, err error) {
 /*
 *
 
-	发布文章
+	发布文章(标签需要切割)
 
 *
 */
-//TODO发布文章的时候，对应标签的文章数会加1
 func (a *article) PublishArticle(ctx context.Context, article *dao.Article) (err error) {
 	//文章dao
 	articledao := dao.GetArticle()
@@ -93,6 +93,7 @@ func (a *article) PublishArticle(ctx context.Context, article *dao.Article) (err
 	accessdao := dao.GetAccess()
 	//点赞dao
 	likedao := dao.GetLike()
+
 	err = articledao.CreateArticle(ctx, article)
 	if err != nil {
 		logrus.Errorf("create article %v failed: %s", article, err.Error())
@@ -133,8 +134,20 @@ func (a *article) PublishArticle(ctx context.Context, article *dao.Article) (err
 			accessdao.DeleteAccess(ctx, article.ID)
 		}
 	}()
+	tagrelationshipDao := dao.GetTagRelationship()
+	tagRelationships := assembleTagRelationship(article.Tags, article.ID)
+	err = tagrelationshipDao.BatchCreateTagRelationship(ctx, tagRelationships)
+	if err != nil {
+		logrus.Errorf("article (%v) create tag relationship failed: %s", article, err.Error())
+		return
+	}
+	defer func() {
+		if err != nil {
+			tagrelationshipDao.BatchDeleteTagRelationship(ctx, tagRelationships)
+		}
+	}()
 	// 所对应标签的文章数加1
-	err = GetTag().IncrementArticleNumByName(ctx, article.Tags, 1)
+	err = GetTag().IncrementArticleNumByNames(ctx, strings.Split(article.Tags, ","), 1)
 	if err != nil {
 		logrus.Errorf("article (%v) increment tag article num failed: %s", article, err.Error())
 		return
@@ -142,15 +155,30 @@ func (a *article) PublishArticle(ctx context.Context, article *dao.Article) (err
 	return
 }
 
+// 没有切分的tags 和 articleid进行组装生成[]*tag_relationship
+func assembleTagRelationship(tags string, articleId uint) []*dao.TagRelationship {
+	tagNames := strings.Split(tags, ",")
+	tagRelationships := make([]*dao.TagRelationship, len(tagNames))
+	for i, tagName := range tagNames {
+		tagRelationships[i] = &dao.TagRelationship{
+			Name:      tagName,
+			ArticleId: articleId,
+		}
+	}
+	return tagRelationships
+}
+
 type ArticleView struct {
-	ID         uint      `json:"id"`
-	Title      string    `json:"title"`
-	Content    string    `json:"content"`
-	Tags       string    `json:"tags"`
-	Creator    uint      `json:"creator"`
-	CreateTime time.Time `json:"create_time"`
-	AccessNum  uint      `json:"access_num"`
-	LikeNum    uint      `json:"like_num"`
+	ID             uint      `json:"id"`
+	Title          string    `json:"title"`
+	Content        string    `json:"content"`
+	Tags           string    `json:"tags"`
+	Creator        uint      `json:"creator"`
+	CreateTime     time.Time `json:"create_time"`
+	AccessNum      uint      `json:"access_num"`
+	LikeNum        uint      `json:"like_num"`
+	CreatorName    string    `json:"creator_name"`
+	CreatorAddress string    `json:"creator_address"`
 }
 
 type ArticleViewByPage struct {
@@ -216,10 +244,17 @@ func (a *article) FindArticle(ctx context.Context, articleid uint) (view *Articl
 	}
 	articledao := dao.GetArticle()
 	likedao := dao.GetLike()
+	userdao := dao.GetUser()
 	var article dao.Article
 	article, err = articledao.FindArticleById(ctx, articleid)
 	if err != nil {
 		logrus.Errorf("find article by id %d failed: %s", articleid, err.Error())
+		return
+	}
+	var user dao.User
+	user, err = userdao.FindUserById(ctx, article.Creator)
+	if err != nil {
+		logrus.Errorf("find user by id %d failed: %s", article.Creator, err.Error())
 		return
 	}
 	var access dao.Access
@@ -233,14 +268,16 @@ func (a *article) FindArticle(ctx context.Context, articleid uint) (view *Articl
 		logrus.Errorf("find like by id %d failed: %s", articleid, err.Error())
 	}
 	view = &ArticleView{
-		ID:         article.ID,
-		Title:      article.Title,
-		Content:    article.Content,
-		Tags:       article.Tags,
-		Creator:    article.Creator,
-		CreateTime: article.CreatedAt,
-		AccessNum:  access.AccessNum,
-		LikeNum:    like.LikeNum,
+		ID:             article.ID,
+		Title:          article.Title,
+		Content:        article.Content,
+		Tags:           article.Tags,
+		Creator:        article.Creator,
+		CreateTime:     article.CreatedAt,
+		AccessNum:      access.AccessNum,
+		LikeNum:        like.LikeNum,
+		CreatorName:    user.Alias,
+		CreatorAddress: user.Address,
 	}
 	//增加访问数
 	go accessdao.IncrementAccess(articleid, 1)

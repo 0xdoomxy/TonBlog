@@ -15,13 +15,14 @@ import (
 
 func init() {
 	db.GetMysql().AutoMigrate(&User{})
+	userDao = newUserDao()
 }
 
 type user struct {
 	cachekey string
 }
 
-var userDao *user = newUserDao()
+var userDao *user
 
 func newUserDao() *user {
 	return &user{

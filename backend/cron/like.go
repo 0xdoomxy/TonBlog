@@ -53,7 +53,7 @@ func (lcc *likeConsumerCron) Run() {
 				logrus.Errorf("parse articleid error (articleid:%s,likenum:%d) failed: %s", articleidStr, likenum, err.Error())
 				continue
 			}
-			if old, ok := m[articleid]; ok && old < likenum {
+			if old, ok := m[articleid]; !ok || (ok && old < likenum) {
 				err = db.GetMysql().Model(&dao.Like{}).Where("article_id = ?", articleid).Update("like_num", likenum).Error
 				if err != nil {
 					logrus.Errorf("update like num (articleid:%d,likenum:%d) failed: %s", articleid, likenum, err.Error())

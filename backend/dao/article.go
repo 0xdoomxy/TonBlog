@@ -117,7 +117,7 @@ func GetArticle() *article {
 type Article struct {
 	gorm.Model
 	Title   string `gorm:"type:varchar(255);not null"`
-	Tags    string `gorm:"-"`
+	Tags    string `gorm:"tags"`
 	Creator uint   `gorm:"not null"`
 	Content string `gorm:"typel:text;not null"`
 	Images  string `gorm:"type:varchar(1000)"`
@@ -180,7 +180,7 @@ func (a *article) FindArticlePaticalById(ctx context.Context, id uint) (article 
 		}
 		return
 	}
-	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Select("id, title, creator, images,created_at,images").Where("id = ?", id).First(&article).Error
+	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Select("id, title, creator, tags,created_at,images").Where("id = ?", id).First(&article).Error
 	if err != nil {
 		logrus.Errorf("find aritcle partical %d from mysql failed:%s", id, err.Error())
 	}
@@ -201,7 +201,10 @@ func (a *article) FindArticleById(ctx context.Context, id uint) (article Article
 		logrus.Errorf("get article %d from mysql failed: %s", id, err.Error())
 		return
 	}
-	cache.Set(ctx, key, &article, 30*time.Minute)
+	ignoreErr := cache.Set(ctx, key, &article, 30*time.Minute).Err()
+	if ignoreErr != nil {
+		logrus.Errorf("set article %d cache failed: %s", id, ignoreErr.Error())
+	}
 	return
 }
 
@@ -217,6 +220,7 @@ func (a *article) BuildArticleSearch(ctx context.Context, article *Article) (err
 		Index:      a.esIndex,
 		DocumentID: strconv.Itoa(int(article.ID)),
 	}
+	//tags  需要切分
 	//将文章内容、tags和标题放入req.body中
 	var bd []byte
 	bd, err = json.Marshal(struct {
@@ -303,7 +307,7 @@ func (a *article) FindArticlePaticalByCreateTime(ctx context.Context, page, size
 	if err != nil {
 		return
 	}
-	err = storage.WithContext(ctx).Model(&Article{}).Select("id, title, creator, images,created_at,images").Order("created_at desc").Offset((page - 1) * size).Limit(size).Find(&articles).Error
+	err = storage.WithContext(ctx).Model(&Article{}).Select("id, title, creator, tags,created_at,images").Order("created_at desc").Offset((page - 1) * size).Limit(size).Find(&articles).Error
 	if err != nil {
 		return
 	}

@@ -59,6 +59,16 @@ func (like *Like) UnmarshalBinary(data []byte) error {
 }
 
 func (l *like) initLikeToCache(ctx context.Context, articleId uint) (err error) {
+	key := fmt.Sprintf("%s_%d", l.cacheKey, articleId)
+	cache := db.GetRedis()
+	_, err = cache.Exists(ctx, key).Result()
+	if err != nil {
+		if err != redis.Nil {
+			logrus.Errorf("check the key %s exists failed: %s", key, err.Error())
+			return
+		}
+		return nil
+	}
 	storage := db.GetMysql()
 	var like Like
 	err = storage.Where("article_id = ?", articleId).First(&like).Error
@@ -66,8 +76,7 @@ func (l *like) initLikeToCache(ctx context.Context, articleId uint) (err error) 
 		logrus.Errorf("init like to cache failed: %s", err.Error())
 		return
 	}
-	cache := db.GetRedis()
-	return cache.Set(ctx, fmt.Sprintf("%s_%d", l.cacheKey, articleId), like.LikeNum, 0).Err()
+	return cache.Set(ctx, key, like.LikeNum, 0).Err()
 }
 
 // before the execute the any like operation you should run this function,exclude the create like function

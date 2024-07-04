@@ -173,7 +173,10 @@ func (a *access) FindAccessById(ctx context.Context, id uint) (access Access, er
 		logrus.Errorf("get access %d from mysql failed:%s", id, err.Error())
 		return
 	}
-	cache.Set(ctx, key, access, time.Duration(viper.GetInt64("cache.cleaninterval"))*time.Millisecond)
+	ignoreErr := cache.Set(ctx, key, &access, time.Duration(viper.GetInt64("cache.cleaninterval"))*time.Millisecond).Err()
+	if ignoreErr != nil {
+		logrus.Errorf("set the access redis cache error:%s", ignoreErr.Error())
+	}
 	return
 }
 
@@ -199,6 +202,9 @@ func (a *access) FindMaxAccessByPage(ctx context.Context, page, size int) (artic
 		return
 	}
 	err = storage.WithContext(ctx).Model(&Access{}).Offset((page - 1) * size).Limit(size).Order("access_num desc").Find(&articles).Error
+	if err != nil {
+		logrus.Errorf("get max access article (page:%d,pagesize:%d) error:%s", page, size, err.Error())
+	}
 	return
 }
 

@@ -16,6 +16,7 @@ func init() {
 		logrus.Fatalf("connect to rabbitmq %s failed: %s", dsn, err.Error())
 	}
 	logrus.Info("connect to rabbitmq success")
+
 }
 
 var rabbitmq *amqp.Connection
