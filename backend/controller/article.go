@@ -24,9 +24,8 @@ func GetArticle() *article {
 
 func (a *article) PublishArticle(ctx *gin.Context) {
 	// userid := context.GetInt64("userid")
-	//TODO this is a dangerous code, you should check the user's permission
-	var userid uint = 1
-	if userid <= 0 {
+	var publickey, ok = ctx.Get("publickey")
+	if !ok {
 		ctx.JSON(200, utils.NewFailedResponse("未登录"))
 		return
 	}
@@ -39,7 +38,7 @@ func (a *article) PublishArticle(ctx *gin.Context) {
 	}
 	var article = &dao.Article{}
 	//添加userid 到articleMap中,必须确保articleMap中没有userid字段
-	article.Creator = userid
+	article.Creator = publickey.(string)
 	article.Title = form.Value["title"][0]
 	article.Content = form.Value["content"][0]
 	article.Images = form.Value["images"][0]
@@ -53,7 +52,6 @@ func (a *article) PublishArticle(ctx *gin.Context) {
 }
 
 func (a *article) UploadImage(context *gin.Context) {
-	// userid := context.GetInt64("userid")
 	//TODO this is a dangerous code, you should check the user's permission
 	userid := 1
 	if userid <= 0 {

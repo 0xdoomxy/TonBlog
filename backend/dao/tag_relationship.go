@@ -14,6 +14,7 @@ import (
 
 func init() {
 	tagRelationshipDao = newTagRelationshipDao()
+	db.GetMysql().AutoMigrate(&TagRelationship{})
 }
 
 type TagRelationship struct {

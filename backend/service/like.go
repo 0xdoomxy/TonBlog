@@ -15,7 +15,7 @@ func GetLike() *like {
 }
 
 // TODO before set as like ,should make sure the userid is valid
-func (l *like) SetAsLike(ctx context.Context, userid uint, articleid uint) (err error) {
+func (l *like) SetAsLike(ctx context.Context, publickey string, articleid uint) (err error) {
 	likeDAO := dao.GetLike()
 	like_relationshipDAO := dao.GetLikeRelationship()
 
@@ -34,14 +34,14 @@ func (l *like) SetAsLike(ctx context.Context, userid uint, articleid uint) (err 
 	}()
 	like_relationship := &dao.LikeRelationship{
 		ArticleID: articleid,
-		UserID:    userid,
+		PublicKey: publickey,
 	}
 	err = like_relationshipDAO.CreateLikeRelationship(ctx, like_relationship)
 	return
 }
 
 // TODO before set as like ,should make sure the userid is valid
-func (l *like) CancelLike(ctx context.Context, userid uint, articleid uint) (err error) {
+func (l *like) CancelLike(ctx context.Context, publickey string, articleid uint) (err error) {
 	likeDAO := dao.GetLike()
 	like_relationshipDAO := dao.GetLikeRelationship()
 	like := &dao.Like{
@@ -59,14 +59,14 @@ func (l *like) CancelLike(ctx context.Context, userid uint, articleid uint) (err
 	}()
 	like_relationship := &dao.LikeRelationship{
 		ArticleID: articleid,
-		UserID:    userid,
+		PublicKey: publickey,
 	}
 	err = like_relationshipDAO.DeleteLikeRelationship(ctx, like_relationship)
 	return
 }
 
-func (l *like) FindIsExist(ctx context.Context, articleid uint, userid uint) (exist bool, err error) {
+func (l *like) FindIsExist(ctx context.Context, articleid uint, publickey string) (exist bool, err error) {
 	like_relationshipDap := dao.GetLikeRelationship()
-	exist, err = like_relationshipDap.FindLikeRelationshipByArticleIDAndUserid(ctx, &dao.LikeRelationship{ArticleID: articleid, UserID: userid})
+	exist, err = like_relationshipDap.FindLikeRelationshipByArticleIDAndUserid(ctx, &dao.LikeRelationship{ArticleID: articleid, PublicKey: publickey})
 	return
 }

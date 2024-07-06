@@ -10,7 +10,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"gorm.io/gorm"
 )
 
 func init() {
@@ -41,9 +40,9 @@ func GetUser() *user {
 *
 */
 type User struct {
-	gorm.Model
-	Address string `gorm:"type:varchar(256);not null"`
-	Alias   string `gorm:"type:varchar(255);not null"`
+	Address   string `gorm:"type:varchar(64);primary_key"`
+	Alias     string `gorm:"type:varchar(255);not null"`
+	CreatedAt time.Time
 }
 
 func (user *User) MarshalBinary() ([]byte, error) {
@@ -62,47 +61,50 @@ func (u *user) CreateUser(user *User) (err error) {
 	return
 }
 
-func (u *user) FindUserById(ctx context.Context, userid uint) (user User, err error) {
+func (u *user) FindUserByAddress(ctx context.Context, address string) (user User, err error) {
 	cache := db.GetRedis()
-	key := fmt.Sprintf("%s_%d", u.cachekey, userid)
+	key := fmt.Sprintf("%s_%s", u.cachekey, address)
 	err = cache.Get(ctx, key).Scan(&user)
 	if err != redis.Nil {
 		if err != nil {
-			logrus.Errorf("find user %v failed from redis: %s", userid, err.Error())
+			logrus.Errorf("find user %v failed from redis: %s", address, err.Error())
 		}
 		return
 	}
-	err = db.GetMysql().Model(&User{}).Where("id = ?", userid).First(&user).Error
+	err = db.GetMysql().Model(&User{}).Where("address = ?", address).First(&user).Error
 	if err != nil {
-		logrus.Errorf("find user %v failed from mysql:%s", userid, err.Error())
+		logrus.Errorf("find user %v failed from mysql:%s", address, err.Error())
 	}
-	cache.Set(ctx, key, &user, 3*time.Minute)
+	ignoreErr := cache.Set(ctx, key, &user, 3*time.Minute).Err()
+	if ignoreErr != nil {
+		logrus.Errorf("set user %v to redis failed:%s", user, ignoreErr.Error())
+	}
 	return
 }
 
-func (u *user) DeleteUser(ctx context.Context, userid uint) (err error) {
+func (u *user) DeleteUser(ctx context.Context, address string) (err error) {
 	cache := db.GetRedis()
-	err = cache.Del(ctx, fmt.Sprintf("%s_%d", u.cachekey, userid)).Err()
+	err = cache.Del(ctx, fmt.Sprintf("%s_%s", u.cachekey, address)).Err()
 	if err != nil && err != redis.Nil {
-		logrus.Errorf("delete user %v from redis failed:%s", userid, err.Error())
+		logrus.Errorf("delete user %v from redis failed:%s", address, err.Error())
 		return
 	}
-	err = db.GetMysql().Model(&User{}).Where("id = ?", userid).Delete(&User{}).Error
+	err = db.GetMysql().Model(&User{}).Where("address = ?", address).Delete(&User{}).Error
 	if err != nil {
-		logrus.Errorf("delete user %v failed from mysql:%s", userid, err.Error())
+		logrus.Errorf("delete user %v failed from mysql:%s", address, err.Error())
 	}
 	return
 }
 
 func (u *user) UpdateUser(ctx context.Context, user *User) (err error) {
 	cache := db.GetRedis()
-	key := fmt.Sprintf("%s_%d", u.cachekey, user.ID)
+	key := fmt.Sprintf("%s_%s", u.cachekey, user.Address)
 	err = cache.Del(ctx, key).Err()
 	if err != nil && err != redis.Nil {
 		logrus.Errorf("to update user, delete user from redis failed:%s", err.Error())
 		return
 	}
-	err = db.GetMysql().Model(&User{}).Where("id = ?", user.ID).Updates(user).Error
+	err = db.GetMysql().Model(&User{}).Where("address = ?", user.Address).Updates(user).Error
 	if err != nil {
 		logrus.Errorf("update the user %v failed:%s", user, err.Error())
 	}

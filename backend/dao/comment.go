@@ -27,7 +27,7 @@ type Comment struct {
 	SubID     uint   `gorm:"not null;index:search"`
 	Content   string `gorm:"type:varchar(255);not null"`
 	ArticleID uint   `gorm:"not null;index:search"`
-	Creator   uint   `gorm:"not null"`
+	Creator   string `gorm:"varchar(64) not null"`
 }
 
 func (c *comment) CreateComment(comment *Comment) (err error) {

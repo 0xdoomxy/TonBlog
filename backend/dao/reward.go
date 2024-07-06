@@ -27,11 +27,11 @@ func GetReward() *reward {
 *
 */
 type Reward struct {
-	ID        uint   `gorm:"primaryKey"`
-	CreateAt  uint64 `gorm:"autoCreateTime:milli"`
-	ArticleID uint   `gorm:"not null;index:searchforarticle"`
-	UserID    uint   `gorm:"not null;index:searchforuser"`
-	Amount    uint   `gorm:"not null"`
+	ID          uint   `gorm:"primaryKey"`
+	CreateAt    uint64 `gorm:"autoCreateTime:milli"`
+	ArticleID   uint   `gorm:"not null;index:searchforarticle"`
+	UserAddress string `gorm:"varchar(64);not null;index:searchforuser"`
+	Amount      uint   `gorm:"not null"`
 }
 
 func (reward *Reward) MarshalBinary() ([]byte, error) {
@@ -71,6 +71,6 @@ func (r *reward) FindRewardByArticleId(articleId uint) (rewards []Reward, err er
 }
 
 func (r *reward) FindRewardByUserId(userId uint) (rewards []Reward, err error) {
-	err = db.GetMysql().Model(&Reward{}).Where("user_id = ?", userId).Find(&rewards).Error
+	err = db.GetMysql().Model(&Reward{}).Where("user_address = ?", userId).Find(&rewards).Error
 	return
 }

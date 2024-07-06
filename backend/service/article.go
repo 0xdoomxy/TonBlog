@@ -169,16 +169,15 @@ func assembleTagRelationship(tags string, articleId uint) []*dao.TagRelationship
 }
 
 type ArticleView struct {
-	ID             uint      `json:"id"`
-	Title          string    `json:"title"`
-	Content        string    `json:"content"`
-	Tags           string    `json:"tags"`
-	Creator        uint      `json:"creator"`
-	CreateTime     time.Time `json:"create_time"`
-	AccessNum      uint      `json:"access_num"`
-	LikeNum        uint      `json:"like_num"`
-	CreatorName    string    `json:"creator_name"`
-	CreatorAddress string    `json:"creator_address"`
+	ID          uint      `json:"id"`
+	Title       string    `json:"title"`
+	Content     string    `json:"content"`
+	Tags        string    `json:"tags"`
+	Creator     string    `json:"creator"`
+	CreateTime  time.Time `json:"create_time"`
+	AccessNum   uint      `json:"access_num"`
+	LikeNum     uint      `json:"like_num"`
+	CreatorName string    `json:"creator_name"`
 }
 
 type ArticleViewByPage struct {
@@ -252,9 +251,9 @@ func (a *article) FindArticle(ctx context.Context, articleid uint) (view *Articl
 		return
 	}
 	var user dao.User
-	user, err = userdao.FindUserById(ctx, article.Creator)
+	user, err = userdao.FindUserByAddress(ctx, article.Creator)
 	if err != nil {
-		logrus.Errorf("find user by id %d failed: %s", article.Creator, err.Error())
+		logrus.Errorf("find user by id %s failed: %s", article.Creator, err.Error())
 		return
 	}
 	var access dao.Access
@@ -268,16 +267,15 @@ func (a *article) FindArticle(ctx context.Context, articleid uint) (view *Articl
 		logrus.Errorf("find like by id %d failed: %s", articleid, err.Error())
 	}
 	view = &ArticleView{
-		ID:             article.ID,
-		Title:          article.Title,
-		Content:        article.Content,
-		Tags:           article.Tags,
-		Creator:        article.Creator,
-		CreateTime:     article.CreatedAt,
-		AccessNum:      access.AccessNum,
-		LikeNum:        like.LikeNum,
-		CreatorName:    user.Alias,
-		CreatorAddress: user.Address,
+		ID:          article.ID,
+		Title:       article.Title,
+		Content:     article.Content,
+		Tags:        article.Tags,
+		Creator:     article.Creator,
+		CreateTime:  article.CreatedAt,
+		AccessNum:   access.AccessNum,
+		LikeNum:     like.LikeNum,
+		CreatorName: user.Alias,
 	}
 	//增加访问数
 	go accessdao.IncrementAccess(articleid, 1)
@@ -294,6 +292,19 @@ func (a *article) FindArticle(ctx context.Context, articleid uint) (view *Articl
 */
 
 func (a *article) FindArticlePatical(ctx context.Context, articleid uint) (view *ArticleView, err error) {
+	if viewAll, ok := a.tryGet(articleid); ok {
+		view = &ArticleView{
+			ID:          viewAll.ID,
+			Title:       viewAll.Title,
+			Creator:     viewAll.Creator,
+			CreateTime:  viewAll.CreateTime,
+			AccessNum:   viewAll.AccessNum,
+			LikeNum:     viewAll.LikeNum,
+			Tags:        viewAll.Tags,
+			CreatorName: viewAll.CreatorName,
+		}
+		return
+	}
 	articledao := dao.GetArticle()
 	accessdao := dao.GetAccess()
 	likedao := dao.GetLike()

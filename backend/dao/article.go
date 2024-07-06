@@ -118,7 +118,7 @@ type Article struct {
 	gorm.Model
 	Title   string `gorm:"type:varchar(255);not null"`
 	Tags    string `gorm:"tags"`
-	Creator uint   `gorm:"not null"`
+	Creator string `gorm:"varchar(64);not null"`
 	Content string `gorm:"typel:text;not null"`
 	Images  string `gorm:"type:varchar(1000)"`
 }
@@ -220,7 +220,6 @@ func (a *article) BuildArticleSearch(ctx context.Context, article *Article) (err
 		Index:      a.esIndex,
 		DocumentID: strconv.Itoa(int(article.ID)),
 	}
-	//tags  需要切分
 	//将文章内容、tags和标题放入req.body中
 	var bd []byte
 	bd, err = json.Marshal(struct {

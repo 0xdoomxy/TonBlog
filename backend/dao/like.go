@@ -46,7 +46,7 @@ func GetLike() *like {
 *
 */
 type Like struct {
-	ArticleID uint `gorm:"not null;uniqueIndex:search"`
+	ArticleID uint `gorm:"not null;Index:searchLike"`
 	LikeNum   uint `gorm:"not null"`
 }
 

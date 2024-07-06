@@ -42,8 +42,17 @@ func (acc *accessConsumerCron) Run() {
 	acc.internal.AddJob("*/2 * * * *", cron.FuncJob(func() {
 		var messages <-chan amqp.Delivery
 		messages, err = channel.Consume(viper.GetString("rabbitmq.accessqueue"), "", true, false, false, false, nil)
+		if err == amqp.ErrClosed {
+			logrus.Errorf("the rabbitmq channel is closed")
+			channel, err = connection.Channel()
+			if err != nil {
+				logrus.Panicf("create the rabbitmq channel failed:%s", err.Error())
+			}
+			return
+		}
 		if err != nil {
-			logrus.Panic("consume the rabbitmq queue failed:", err.Error())
+			logrus.Errorf("consume the rabbitmq queue failed:%s", err.Error())
+			return
 		}
 		for {
 			select {

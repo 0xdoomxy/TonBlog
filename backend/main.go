@@ -4,6 +4,7 @@ import (
 	"blog/controller"
 	"blog/cron"
 	"blog/middleware/cors"
+	"blog/middleware/jwt"
 	"blog/middleware/metrics"
 	"fmt"
 	"time"
@@ -44,7 +45,6 @@ func main() {
 	bindLikeRoutes(engine)
 	bindCommentRoutes(engine)
 	bindUserRoutes(engine)
-	bindRewardRoutes(engine)
 	bindTagRoutes(engine)
 	engine.Run(":8080")
 }
@@ -52,13 +52,13 @@ func main() {
 func bindArticleRoutes(engine *gin.Engine) {
 	route := engine.Group("/article")
 
-	route.POST("/image/upload", func(context *gin.Context) {
+	route.POST("/image/upload", jwt.NewVerifyMiddleware(), func(context *gin.Context) {
 		controller.GetArticle().UploadImage(context)
 	})
 	route.GET("/image/download", func(ctx *gin.Context) {
 		controller.GetArticle().DownloadImage(ctx)
 	})
-	route.POST("/publish", func(ctx *gin.Context) {
+	route.POST("/publish", jwt.NewVerifyMiddleware(), func(ctx *gin.Context) {
 		controller.GetArticle().PublishArticle(ctx)
 	})
 	route.GET("/findbymaxaccess", func(ctx *gin.Context) {
@@ -77,13 +77,13 @@ func bindArticleRoutes(engine *gin.Engine) {
 
 func bindLikeRoutes(engine *gin.Engine) {
 	router := engine.Group("/like")
-	router.GET("/confirm", func(ctx *gin.Context) {
+	router.GET("/confirm", jwt.NewVerifyMiddleware(), func(ctx *gin.Context) {
 		controller.GetLike().SetAsLike(ctx)
 	})
-	router.GET("/cancel", func(ctx *gin.Context) {
+	router.GET("/cancel", jwt.NewVerifyMiddleware(), func(ctx *gin.Context) {
 		controller.GetLike().CancelLike(ctx)
 	})
-	router.GET("/exist", func(ctx *gin.Context) {
+	router.GET("/exist", jwt.NewVerifyMiddleware(), func(ctx *gin.Context) {
 		controller.GetLike().IsExist(ctx)
 	})
 }
@@ -94,23 +94,23 @@ func bindCommentRoutes(engine *gin.Engine) {
 	}
 }
 
+// TODO test the proof is true
 func bindUserRoutes(engine *gin.Engine) {
-	_ = engine.Group("/user")
-	{
-
-	}
-}
-
-func bindRewardRoutes(engine *gin.Engine) {
-	_ = engine.Group("/reward")
-	{
-
-	}
+	router := engine.Group("/user")
+	router.POST("/proof", func(ctx *gin.Context) {
+		controller.GetUser().ProofHandler(ctx)
+	})
+	router.GET("/generate", func(ctx *gin.Context) {
+		controller.GetUser().PayloadHandler(ctx)
+	})
 }
 
 func bindTagRoutes(engine *gin.Engine) {
 	router := engine.Group("/tag")
 	router.GET("/findall", func(ctx *gin.Context) {
 		controller.GetTag().GetAllTags(ctx)
+	})
+	router.GET("/findArticle", func(ctx *gin.Context) {
+		controller.GetTag().GetArticleByTag(ctx)
 	})
 }
