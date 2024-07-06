@@ -1,14 +1,16 @@
-import React,{useEffect,useState,useRef} from "react";
-import { Search} from "../components";
+import React,{useEffect,useState} from "react";
+import { Header, Search} from "../components";
 import { useParams,useNavigate } from "react-router-dom";
 import MarkdownContext from "../components/markdown";
-import agent from "../agent/agent";
+import { LikeClient,ArticleClient } from "../agent/agent";
+import { TonConnectButton,useTonWallet,useTonConnectUI,toUserFriendlyAddress } from "@tonconnect/ui-react";
+import { Tag,Modal,Input,InputNumber,Segmented } from "antd";
+import { toast } from "react-toastify";
+import { UserOutlined,MoneyCollectOutlined  } from '@ant-design/icons';
 
-
-
-const Article =()=>{
+const ArticlePage =()=>{
     //标签颜色
-    const labelColorList = ["bg-red-300","bg-yellow-200","bg-green-300","bg-pink-300","bg-gray-200"];
+    const labelColorList = ["blue", "purple", "cyan", "green", "magenta", "pink", "red", "orange", "yellow", "volcano", "geekblue", "lime", "gold"];
     const [article,setArticle] = useState({tags:[],isLike:false});
     const navigate=useNavigate();
     const navItems=[{
@@ -18,61 +20,97 @@ const Article =()=>{
         Name:"About",
         Target:"/about"
     },{Name:"Archieve",Target:"/archieve"}]
-    //是否已经登陆
-    const [isLogin,setIsLogin] = useState(false);
+    
+    const wallet = useTonWallet();
+    const [tonConnectUI,setOptions] = useTonConnectUI();
+    //是否正在打赏中
+    const [rewardModal,setRewardModal] = useState(false);
+    //打赏价格
+    const [rewardInfo,setRewardInfo] = useState({
+        address: "0:9cc2ceadf8282782c3bfe6b7ad0933e59b6f7257025f3fad607106738d91dea0",
+        prices:1000
+    });
         //是否需要更换header显示
-        const [changeHeader,setChangeHeader]=useState(false);
+    const [changeHeader,setChangeHeader]=useState(false);
     //文章唯一id
     const{articleId} =useParams();
     // //markdown文章内容显示ref
     // const [contextDom,setContextDom] =useRef([]);
          //小屏幕点击事件，用来显示菜单栏
      const [showSmallNav,setShowSmallNav]=useState(false);
+     function reward(){
+        if (wallet=== undefined || wallet === null){
+            alert("请先登陆");
+            return;
+        }
+        tonConnectUI.sendTransaction({messages:[{
+            address:rewardInfo.address,
+            amount: rewardInfo.prices
+        }]}).then((res)=>{
+            if(res.status){
+                alert("打赏成功");
+            }else{
+                alert("打赏失败");
+            }
+        });
+     }
     function setAsLike(){
-        agent.Like.Add(articleId,1).then((res)=>{
-            if(article==undefined||article==null){
+        LikeClient.Add(articleId,1).then((res)=>{
+            if(res===undefined || res === null){
+                return;
+            }
+            if(article===undefined||article===null){
                 return;
             }
             if(article.isLike){
-                alert("不要重复点赞");
+                toast.error("不要重复点赞");
             }
             if (!res.status){
-                alert("点赞失败");
+                toast.error("点赞失败");
             }
-            setArticle((old) => ({...old, isLike: true}));
+            setArticle((old) => ({...old, isLike: true,like_num:old.like_num+1}));
         });
     }
     function cancelLike(){
-        if(article==undefined||article==null){
+        if(article===undefined||article===null){
             return;
         }
         if(!article.isLike){
-            alert("不要重复取消点赞");
+            toast.error("不要重复取消点赞");
         }
-        agent.Like.Remove(articleId,1).then((res)=>{
-            if (!res.status){
-                alert("取消点赞失败");
+        LikeClient.Remove(articleId,1).then((res)=>{
+            if(res===undefined || res === null){
+                return;
             }
-            setArticle((old) => ({...old, isLike: false}));
+            if (!res.status){
+                toast.error("取消点赞失败");
+            }
+            setArticle((old) => ({...old, isLike: false,like_num:old.like_num-1}));
         });
     }
     function existLike(){
-        agent.Like.Find(articleId,1).then((res)=>{
-            if (!res.status){
-                alert("查询失败");
+        LikeClient.Find(articleId,1).then((res)=>{
+            if(res===undefined || res === null){
+                return;
             }
-            if (res==undefined||res==null){
+            if (!res.status){
+                toast.error("查询失败");
+            }
+            if (res.data===undefined||res.data===null){
                 return;
             }
             setArticle((old) => ({...old, isLike: res.data.exist}));
         });
     }
     function findArticle(){
-        agent.Article.Find(articleId).then((res)=>{
-            if (!res.status){
-                alert("查询失败");
+        ArticleClient.Find(articleId).then((res)=>{
+            if(res===undefined || res === null){
+                return;
             }
-            if (res==undefined||res==null){
+            if (!res.status){
+                toast.error("查询失败");
+            }
+            if (res.data===undefined||res.data===null){
                 return;
             }
             let item  = res.data;
@@ -86,12 +124,16 @@ const Article =()=>{
             setArticle(item);
         });
     }
+    useState(()=>{
+        if(tonConnectUI.connected){
+            //是否已经点赞
+             existLike();
+        }
+    },[tonConnectUI.connected  ])
       //组件初始化的时候执行的函数
     useEffect(()=>{
         //初始化文章信息
         findArticle();
-        //是否已经点赞
-        existLike();
         //** 滚动时出现搜索框 */
         const checkScroll =()=>{
             if(window.scrollY >200){
@@ -103,59 +145,47 @@ const Article =()=>{
         window.addEventListener("scroll",checkScroll);
         return ()=>window.removeEventListener("scroll",checkScroll);
 },[])
-// 监听是否登陆，如果登陆加载评论信息
-useEffect(()=>{
-    if(isLogin){
-        console.log("已经登陆");
-    }
-},[isLogin])
+
     return (
         <div className=" w-full h-full">
             {/* header for search */}
-            <div className=" fixed z-10 w-full ">
-               <div className="bg-slate-50 w-full border-b-2 h-12 flex justify-evenly md:justify-center items-center ">
-                 {!changeHeader&&(<><div  className=" w-1/4 flex justify-center   items-center py-2">
-                <h1 className=" flex align-middle font-serif text-wrap h-full text-xl md:text-3xl cursor-pointer"  onClick={()=>{window.location.href="https://github.com/0xdoomxy"}}>0xdoomxy</h1>
-                </div>
-                <div className="w-1/2   hidden md:flex justify-start items-center">
-                        {navItems.map((item,index)=>(
-                            <div onClick={()=>{navigate(item.Target)}} className=" hover:-translate-y-1 duration-500  text-center text-lg px-8 cursor-pointer " key={"nav"+index}>{item.Name}</div>
-                        ))}
-                        <div className=" pl-24 ">
-                            <div className=" cursor-pointer  ">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-<path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-</svg>
-</div>
-                        </div>
-                </div></>)}
-                {/* 小屏幕显示 */}
-                <div className=" flex  pl-12 justify-center items-center  w-1/3 md:hidden ">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 cursor-pointer" onClick={()=>{setShowSmallNav(!showSmallNav)}}>
-<path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
-</svg>
-                </div>
-                {changeHeader&&<Search/>}   
-                {/* TODO 点击事件 */}
-            </div>
-            {showSmallNav&&<div className="  bg-gray-50 border-b  z-10 relative flex w-full md:hidden flex-col justify-center items-center">
-                {navItems.map((item,index)=>(
-                            <div onClick={()=>{navigate(item.Target)}} className="w-full border-y hover:decoration-sky-700 hover:underline  text-center text-lg px-8 cursor-pointer " key={"smallnav"+index}>{item.Name}</div>
-                        ))}
-                </div>} 
-                </div>
+           <Header/>
                 {/* body */}
         <div className="w-full h-full pt-20 flex items-start ">
+            <Modal title="Ton" className=" z-0" onOk={()=>{reward()}} open={rewardModal} okText="赞助" cancelText="离开" onCancel={()=>{setRewardModal(false)}}>
+                    <Input className=" mt-4" prefix={<UserOutlined />} value={rewardInfo.address} disabled></Input>
+                    <InputNumber className=" my-4" value={rewardInfo.prices} onChange={(value)=>{setRewardInfo((old)=>({...old,prices:value}))}}
+      suffix="Ton"
+      style={{
+        width: '100%',
+      }}
+      addonBefore={ <svg width="20" height="20" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M28 56C43.464 56 56 43.464 56 28C56 12.536 43.464 0 28 0C12.536 0 0 12.536 0 28C0 43.464 12.536 56 28 56Z" fill="#0098EA"/>
+      <path d="M37.5603 15.6277H18.4386C14.9228 15.6277 12.6944 19.4202 14.4632 22.4861L26.2644 42.9409C27.0345 44.2765 28.9644 44.2765 29.7345 42.9409L41.5381 22.4861C43.3045 19.4251 41.0761 15.6277 37.5627 15.6277H37.5603ZM26.2548 36.8068L23.6847 31.8327L17.4833 20.7414C17.0742 20.0315 17.5795 19.1218 18.4362 19.1218H26.2524V36.8092L26.2548 36.8068ZM38.5108 20.739L32.3118 31.8351L29.7417 36.8068V19.1194H37.5579C38.4146 19.1194 38.9199 20.0291 38.5108 20.739Z" fill="white"/>
+      </svg>
+      }
+    />
+    <div className=" mt-4 w-full flex justify-center items-center">
+        <div className=" w-full flex justify-start">
+    <Segmented
+    options={[
+      { label: '赞助记录', value: 'all', icon: <MoneyCollectOutlined  /> },
+      { label: '我的赞助', value: 'my', icon: <UserOutlined /> },
+    ]}
+  />
+  </div>
+    </div>
+            </Modal>
             <div className=" w-1/6"></div>
             <div className=" w-2/3 h-full">
                 {/* 简介 */}
-                <div className=" flex justify-between w-full h-40">
+                <div className=" flex justify-between w-full h-48">
                     <div className="w-3/4 flex items-start flex-col">
                         <div className=" text-6xl font-normal text-ellipsis">{article.title}</div>
                         <div className=" flex justify-start items-center py-4 ">{article.tags.map((item,index)=>{
-                            return (<div key={"tag"+index}  className={`mx-2 md:w-20   border flex justify-center items-center ${labelColorList[index%labelColorList.length]}`} >item</div>)
+                            return (<Tag color={labelColorList[index%labelColorList.length]}>{item}</Tag>)
                         })}</div>
-                        <div className=" text-xl font-serif py-1">{article.creator}</div>
+                        <div className="w-full text-xl font-serif py-4  truncate " id={article.creator}>{article.creator!==undefined && article.creator!==null &&toUserFriendlyAddress(article.creator)}</div>
                         <div className=" text-base font-sans ">{article.create_time}</div>
                     </div>
                     <div className="w-1/4 h-full flex justify-center flex-col">
@@ -167,14 +197,13 @@ useEffect(()=>{
                         </div>
                     </div>
                 </div>
-                <div className=" w-full h-full pt-20">
-              <MarkdownContext context={article.content}/>
-        </div>
-        <div className=" w-full pt-32 pb-4 flex justify-end  ">
-        {!isLogin?<div className="w-1/3 flex justify-end items-center  ">
-                        <p className=" cursor-pointer flex w-1/2 text-xl md:text-2xl border-2 rounded-xl justify-center bg-gray-100 " onClick={()=>{setIsLogin(true)}} >登录</p>
-                        </div> :<div  className=" w-1/3 flex flex-row justify-end items-center">
-                            
+                <div className=" pt-20">
+              <MarkdownContext  context={article.content}/>
+              </div>
+        <div className=" w-full pt-24 pb-4 flex justify-end  ">
+        {wallet === undefined || wallet === null?<div className="w-1/3 flex justify-end items-center  ">
+                   <TonConnectButton   className=" md:w-20 h-8"  />
+                        </div> :<div  className=" w-1/3 flex flex-row justify-end items-center">    
                             <div className=" px-2 cursor-pointer ">
                             {!article.isLike?<svg onClick={()=>{setAsLike()}} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
   <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z" />
@@ -183,23 +212,20 @@ useEffect(()=>{
 </svg>
 }
                             </div>
-                            <div className=" px-2 cursor-pointer" onClick={()=>{console.log("触发打赏事件")}} >
+                            <div className=" px-2 cursor-pointer" onClick={()=>{setRewardModal(true)}} >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
   <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
-</svg>
-
-                            </div>
-                            <div className=" px-2 cursor-pointer" onClick={()=>{console.log("触发收藏事件")}}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-  <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
 </svg>
 
                             </div>
                             </div>}
                
         </div>
-        {isLogin&&<div className="w-full flex flex-row">
-            <input  type="text" className="w-full  h-32 border-2 rounded-xl" placeholder="评论"></input>
+        {wallet !== undefined && wallet !== null&&<div className="w-full flex flex-row">
+           <div className=" w-full flex flex-col">
+<label htmlFor="message" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">评论</label>
+<textarea id="message" rows="4" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Write your thoughts here..."></textarea>
+</div>
             </div>}
         </div>
         <div className=" w-1/6"></div>
@@ -207,4 +233,4 @@ useEffect(()=>{
         </div>
     )
 }
-export default Article;
+export default ArticlePage;

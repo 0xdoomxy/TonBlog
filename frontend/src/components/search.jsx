@@ -2,7 +2,7 @@ import React from 'react'
 
 
 
-const Search = ({onKeyDown}) => {
+export const  Search = ({onKeyDown}) => {
     return(
         <div className="w-full h-full flex justify-end md:justify-center items-center">
                     <div className=" h-4/5 w-4/5 border-2 flex justify-between  items-center rounded-2xl mr-2 ">
@@ -18,5 +18,3 @@ const Search = ({onKeyDown}) => {
     )
 
 }
-
-export default Search

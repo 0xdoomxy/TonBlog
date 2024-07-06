@@ -1,24 +1,19 @@
 import React, { useEffect,useState } from "react";
 
 import Constants from "../util/constants";
-
+import { toUserFriendlyAddress  } from '@tonconnect/ui-react';
 import { useNavigate } from "react-router-dom";
-import { Search } from "../components";
-import agent from "../agent/agent";
+import {TagClient,ArticleClient} from "../agent/agent";
+import {  toast } from 'react-toastify';
+import { Tag  } from "antd";
+import { Header } from "../components";
 
-const Home = ()=>{
+const HomePage = ()=>{
     const defaultTagsViewNum =3
     const navigate = useNavigate();
-    const labelColorList = ["bg-red-300","bg-yellow-200","bg-green-300","bg-pink-300","bg-gray-200"]
-     const navItems=[{
-            Name:"Home",
-            Target:"/"
-        },{
-            Name:"About",
-            Target:"/about"
-        },{Name:"Archieve",Target:"/archieve"}]
+    const labelColorList = ["blue", "purple", "cyan", "green", "magenta", "pink", "red", "orange", "yellow", "volcano", "geekblue", "lime", "gold"];
      //所有的标签列表       
-    const [allTags,setAllTags]=useState([])
+    const [allTags,setAllTags]=useState([]);
      //当前可见的标签数量   
     const [curTagViewNum,setCurTagViewNum]=useState(defaultTagsViewNum);
     //所有可见的标签列表    
@@ -29,20 +24,23 @@ const Home = ()=>{
     const [newArticles,setNewArticles]=useState([]);
     //热门文章列表
     const [hotAriticles,setHotArticles]=useState([]);
-    //是否需要更换header显示
-    const [changeHeader,setChangeHeader]=useState(false);
-    //小屏幕点击事件，用来显示菜单栏
-    const [showSmallNav,setShowSmallNav]=useState(false);
-    //是否svg图标来展示显示组建
-    const [isSearchView,setIsSearchView]=useState(false);
     useEffect(()=>{
-        setTags(allTags.slice(0,curTagViewNum));
+        if(allTags !== undefined && allTags!==null&&allTags instanceof Array){
+             setTags(allTags.slice(0,curTagViewNum));
+        }
     },[curTagViewNum])
     //获取所有标签
     function getAllTags(){
-        agent.Tag.GetAllTags().then((data)=>{
+        TagClient.GetAllTags().then((data)=>{
+            if(data===undefined || data === null){
+                return;
+            }
             if(!data.status){
-                alert("failed",data.message);
+                let msg =data.message;
+                if(msg === undefined || msg === null){
+                    msg = "系统出错啦";
+                }
+                toast.error(msg);
                 return;
             }
             setAllTags(data.data);
@@ -50,19 +48,37 @@ const Home = ()=>{
     }
     //获取最新文章
     function findTheNewestArticle(){
-        agent.Article.FindNewest(1,Constants.PageSize).then((data)=>{
-            if(!data.status){
-                alert("failed",data.message);
+        ArticleClient.FindNewest(1,Constants.PageSize).then((data)=>{
+            if(data===undefined || data === null){
                 return;
             }
-            setNewArticles(data.data.articles.map((item)=>{
-                item.tags = item.tags.split(",");
-                item.create_time = new Date(item.create_time).toLocaleDateString("zh-CN", {timeZone: "Asia/Shanghai", year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'});
+            if(!data.status){
+                let msg =data.message;
+                if(msg === undefined || msg === null){
+                    msg = "系统出错啦";
+                }
+                toast.error(msg);
+                return;
+            }
+            if(data.data === undefined || data.data === null || data.data.articles === undefined || data.data.articles === null){
+                return;
+            }
+            setNewArticles(data.data.articles.map((item) => {
+                
+                if (item.tags !== "") {
+                    item.tags = item.tags.split(",");
+                } else {
+                    item.tags = [];
+                }
+                item.create_time = new Date(item.create_time).toLocaleDateString("zh-CN", {
+                    timeZone: "Asia/Shanghai",
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
                 return item;
             }));
         })
@@ -71,13 +87,27 @@ const Home = ()=>{
      * 获取热度最高文章
      */
     function findTheHotestAritcle(){
-        agent.Article.FindMaxAccess(1,Constants.PageSize).then((data)=>{
+        ArticleClient.FindMaxAccess(1,Constants.PageSize).then((data)=>{
+            if(data===undefined || data === null){
+                return;
+            }
             if(!data.status){
-                alert("failed",data.message);
+                let msg =data.message;
+                if(msg === undefined || msg === null){
+                    msg = "系统出错啦";
+                }
+                toast.error(msg);
+                return;
+            }
+            if(data.data === undefined || data.data === null || data.data.articles === undefined || data.data.articles === null){
                 return;
             }
             setHotArticles(data.data.articles.map((item)=>{
-                item.tags = item.tags.split(",");
+                if (item.tags !== "") {
+                    item.tags = item.tags.split(",");
+                } else {
+                    item.tags = [];
+                }
                 item.create_time = new Date(item.create_time).toLocaleDateString("zh-CN", {timeZone: "Asia/Shanghai",year: 'numeric',
                 month: 'long',
                 day: 'numeric',
@@ -96,16 +126,6 @@ const Home = ()=>{
         findTheNewestArticle();
         //初始化所有标签
         getAllTags();
-        //监听鼠标滚动事件来改变header
-            const checkScroll =()=>{
-                if(window.scrollY >200){
-                    setChangeHeader(true);
-                }else{  
-                    setChangeHeader(false);
-                }
-            };
-            window.addEventListener("scroll",checkScroll);
-            return ()=>window.removeEventListener("scroll",checkScroll);
     },[])
     const showAllTagsOnclick=()=>{
         if (openAllTags){
@@ -118,48 +138,22 @@ const Home = ()=>{
     
     return(
         <div className=" w-full h-full">
-            {/* header信息 */}
-            <div className="w-full fixed z-10 ">
-            <div className="   bg-slate-50 w-full border-b-2 h-12 flex justify-evenly md:justify-center items-center ">
-                {!changeHeader&&(<div className="w-full h-full flex items-center justify-center"><div  className=" w-1/4 flex justify-center   items-center py-2">
-                <h1 className=" flex align-middle font-serif text-wrap h-full text-xl md:text-3xl cursor-pointer pl-2 "  onClick={()=>{window.location.href="https://github.com/0xdoomxy"}}>0xdoomxy</h1>
-                </div>
-                <div className="w-1/2   hidden md:flex justify-start items-center">
-                        {navItems.map((item,index)=>(
-                            <div onClick={()=>{navigate(item.Target)}} className=" hover:-translate-y-1 duration-500  text-center text-lg px-8 cursor-pointer " key={"nav"+index}>{item.Name}</div>
-                        ))}
-                        <div className=" pl-24 ">
-                            <div className=" cursor-pointer  ">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-<path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-</svg>
-</div>
-                        </div>
-                </div></div>)}
-                {changeHeader&&<Search  onKeyDown={(event)=>{if(event.keyCode!==13){return;}if(event.target.value == undefined || event.target.value == null ){return }navigate(`/search?keyword=${event.target.value}`,)}}/>}
-                {/* 小屏幕显示 */}
-                <div className=" flex  pl-12 justify-center items-center  w-1/3 md:hidden ">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 cursor-pointer" onClick={()=>{setShowSmallNav(!showSmallNav)}}>
-<path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
-</svg>
-                </div>
-            </div>
-            </div>
+          <Header/>
+
             <div className=" pt-12 w-full    flex justify-center items-center">
-            {showSmallNav&&<div className="w-full   h-full backdrop-blur absolute top-12    flex   flex-col justify-start items-center">
-                {navItems.map((item,index)=>(
-                            <div onClick={()=>{navigate(item.Target)}} className="w-full border-y hover:decoration-sky-700 hover:underline  text-center text-lg px-8 cursor-pointer " key={"smallnav"+index}>{item.Name}</div>
-                        ))}
-                </div>}
                 <div className=" w-1/10"></div>
                 <div className=" w-4/5 pt-8 ">
                     <div className="grid grid-flow-row grid-cols-3  md:grid-cols-6 gap-10">
-                    {tags.slice(0,curTagViewNum).map((item,_)=>(
+                    {tags.map((item,index)=>{
+                        if(index >= curTagViewNum){
+                            return;
+                        }
+                        return (
                         <div  className=" my-3 min-h-8 h-8  min-w-24 max-w-28 justify-center rounded-xl flex  text-center text-lg cursor-pointer  " key={"tag"+item.Name}>
                             <p className="hover:text-blue-500 text-sm font-semibold">{item.Name}</p>
                             <div className="min-w-6 min-h-3 h-4 bg-stone-200  text-xs rounded-lg ">{item.ArticleNum}</div>
                         </div>
-                    ))}
+                    )})}
                     </div>
                     {tags.length>curTagViewNum?<div  className="w-full flex justify-end cursor-pointer" onClick={showAllTagsOnclick}>
                      {openAllTags?<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
@@ -183,9 +177,9 @@ const Home = ()=>{
         <div className="flex w-2/3 flex-col justify-center">
         <p className=" font-serif md:text-2xl py-1">{item.title}</p>
         <div className=" flex py-1">
-        {item.tags!=null &&item.tags.length>0&&item.tags.map((tag,index)=>(<div key={"tag"+index} className={"md:min-w-16 w-16 min-h-5  font-semibold items-center flex justify-center mx-1 "+labelColorList[index%labelColorList.length]+" text-xs rounded-lg"}>{tag}</div>) )}
+        {item.tags!==null && item.tags instanceof Array && item.tags.length>0&&item.tags.map((tag,index)=>(<Tag color={labelColorList[index%labelColorList.length]}>{tag}</Tag>) )}
         </div>
-        <div className=" font-normal text-md">{item.creator}</div>
+        <div className=" font-normal text-md truncate">{toUserFriendlyAddress(item.creator)}</div>
         <div  className=" font-normal text-sm">{item.create_time}</div>
         </div>
         <div className=" flex justify-center w-1/3 items-center flex-col">
@@ -209,9 +203,9 @@ const Home = ()=>{
         <div className="flex flex-col w-2/3 justify-center ">
         <p className=" font-serif md:text-2xl py-1">{item.title}</p>
         <div className=" flex py-1">
-        {item.tags!=null &&item.tags.length>0&&item.tags.map((tag,index)=>(<div key={"tag"+index} className={"md:min-w-16 w-16 min-h-5  font-semibold items-center flex justify-center mx-1 "+labelColorList[index%labelColorList.length]+" text-xs rounded-lg"}>{tag}</div>) )}
+        {item.tags!=null && item.tags instanceof Array &&item.tags.length>0&&item.tags.map((tag,index)=>(<Tag color={labelColorList[index%labelColorList.length]}>{tag}</Tag>) )}
         </div>
-        <div className=" font-normal text-md">{item.creator}</div>
+        <div className=" font-normal text-md truncate">{toUserFriendlyAddress(item.creator)}</div>
         <div  className=" font-normal text-sm">{item.create_time}</div>
         </div>
         <div className=" flex justify-center w-1/3 items-center flex-col">
@@ -243,4 +237,4 @@ const Home = ()=>{
 
 }
 
-export default Home;
+export default HomePage;

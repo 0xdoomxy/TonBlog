@@ -1,9 +1,11 @@
 import React, { useEffect,useState } from 'react';
-import agent from "../agent/agent";
+import {ArticleClient} from "../agent/agent";
 import Constants from "../util/constants";
 import { useNavigate,useSearchParams  } from "react-router-dom";
-import { Spin } from '../components';
-const Search = () => {
+import { Header, Spin } from '../components';
+import { ToastContainer, toast } from 'react-toastify';
+import {Search} from "../components/search"
+const SearchPage = () => {
     const [params] = useSearchParams()
     const navigate = useNavigate();
     const labelColorList = ["bg-red-300","bg-yellow-200","bg-green-300","bg-pink-300","bg-gray-200"]
@@ -24,16 +26,25 @@ const Search = () => {
     const [isLoad,setIsLoading] = useState(true);
  //搜索文章
   function searchArticle(){
-    if (searchKeyword== null || searchKeyword == undefined || searchKeyword === ""){
+    if (searchKeyword=== null || searchKeyword === undefined || searchKeyword === ""){
         return;
     }
-    agent.Article.Search(searchKeyword,1,Constants.PageSize).then((data)=>{
+    
+    ArticleClient.Search(searchKeyword,1,Constants.PageSize).then((data)=>{
         if(!data.status){
-            alert("failed",data.message);
+            let msg =data.message;
+            if(msg === undefined || msg === null){
+                msg = "系统出错啦";
+            }
+            toast.error(msg);
             return;
         }
         setSearchArticles(data.data.articles.map((item)=>{
-            item.tags = item.tags.split(",");
+            if (item.tags !== "") {
+                item.tags = item.tags.split(",");
+            } else {
+                item.tags = [];
+            }
             item.create_time = new Date(item.create_time).toLocaleDateString("zh-CN", {timeZone: "Asia/Shanghai", year: 'numeric',
             month: 'long',
             day: 'numeric',
@@ -63,33 +74,10 @@ const Search = () => {
     },[])
   return (
     <div className=" w-full h-full">
+
+        <ToastContainer  />
     {/* header信息 */}
-    <div className="w-full fixed z-10 ">
-    <div className="   bg-slate-50 w-full border-b-2 h-12 flex justify-evenly md:justify-center items-center ">
-        {!changeHeader&&(<div className="w-full h-full flex items-center justify-center"><div  className=" w-1/4 flex justify-center   items-center py-2">
-        <h1 className=" flex align-middle font-serif text-wrap h-full text-xl md:text-3xl cursor-pointer pl-2 "  onClick={()=>{window.location.href="https://github.com/0xdoomxy"}}>0xdoomxy</h1>
-        </div>
-        <div className="w-1/2   hidden md:flex justify-start items-center">
-                {navItems.map((item,index)=>(
-                    <div onClick={()=>{navigate(item.Target)}} className=" hover:-translate-y-1 duration-500  text-center text-lg px-8 cursor-pointer " key={"nav"+index}>{item.Name}</div>
-                ))}
-                <div className=" pl-24 ">
-                    <div className=" cursor-pointer  ">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-<path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-</svg>
-</div>
-                </div>
-        </div></div>)}
-        {changeHeader&&<Search  onKeyDown={searchArticle}/>}
-        {/* 小屏幕显示 */}
-        <div className=" flex  pl-12 justify-center items-center  w-1/3 md:hidden ">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 cursor-pointer" onClick={()=>{setShowSmallNav(!showSmallNav)}}>
-<path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
-</svg>
-        </div>
-    </div>
-    </div>
+   <Header/>
     {/**搜索内容主体 */}
     {isLoad?<div className='w-full h-full flex justify-center items-center'><Spin isSpin={isLoad} className=" w-20 h-20"/></div>:<div className='flex justify-center items-center'>
         <div className=' w-1/5 h-full'></div>
@@ -100,7 +88,7 @@ const Search = () => {
         <div className="flex w-2/3 flex-col justify-center">
         <p className=" font-serif md:text-2xl py-1">{item.title}</p>
         <div className=" flex py-1">
-        {item.tags!=null &&item.tags.length>0&&item.tags.map((tag,index)=>(<div key={"tag"+index} className={"md:min-w-16 w-16 min-h-5  font-semibold items-center flex justify-center mx-1 "+labelColorList[index%labelColorList.length]+" text-xs rounded-lg"}>{tag}</div>) )}
+        {item.tags!=null && item.tags instanceof Array &&item.tags.length>0&&item.tags.map((tag,index)=>(<div key={"tag"+index} className={"md:min-w-16 w-16 min-h-5  font-semibold items-center flex justify-center mx-1 "+labelColorList[index%labelColorList.length]+" text-xs rounded-lg"}>{tag}</div>) )}
         </div>
         <div className=" font-normal text-md">{item.creator}</div>
         <div  className=" font-normal text-sm">{item.create_time}</div>
@@ -120,4 +108,4 @@ const Search = () => {
 };
 
 
-export default Search;
+export default SearchPage;
