@@ -1,8 +1,6 @@
 package db
 
 import (
-	"blog/middleware/fasthttp"
-
 	elasticsearch "github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/sirupsen/logrus"
@@ -14,7 +12,8 @@ func init() {
 		Addresses: viper.GetStringSlice("elasticsearch.address"),
 		Username:  viper.GetString("elasticsearch.username"),
 		Password:  viper.GetString("elasticsearch.password"),
-		Transport: &fasthttp.Transport{},
+		//TODO this method will stop the world
+		// Transport: &fasthttp.Transport{},
 	}
 	var err error
 	es, err = elasticsearch.NewClient(cfg)

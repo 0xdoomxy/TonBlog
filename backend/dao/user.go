@@ -18,6 +18,7 @@ func init() {
 }
 
 type user struct {
+	_        [0]func()
 	cachekey string
 }
 

@@ -243,15 +243,15 @@ func (a *article) FindArticle(ctx context.Context, articleid uint) (view *Articl
 	}
 	articledao := dao.GetArticle()
 	likedao := dao.GetLike()
-	userdao := dao.GetUser()
+	userService := GetUser()
 	var article dao.Article
 	article, err = articledao.FindArticleById(ctx, articleid)
 	if err != nil {
 		logrus.Errorf("find article by id %d failed: %s", articleid, err.Error())
 		return
 	}
-	var user dao.User
-	user, err = userdao.FindUserByAddress(ctx, article.Creator)
+	var user *dao.User
+	user, err = userService.FindUserByAddress(ctx, article.Creator)
 	if err != nil {
 		logrus.Errorf("find user by id %s failed: %s", article.Creator, err.Error())
 		return
@@ -308,7 +308,7 @@ func (a *article) FindArticlePatical(ctx context.Context, articleid uint) (view 
 	articledao := dao.GetArticle()
 	accessdao := dao.GetAccess()
 	likedao := dao.GetLike()
-
+	userService := GetUser()
 	var article dao.Article
 	article, err = articledao.FindArticlePaticalById(ctx, articleid)
 	if err != nil {
@@ -327,14 +327,21 @@ func (a *article) FindArticlePatical(ctx context.Context, articleid uint) (view 
 		logrus.Errorf("find like by id %d failed: %s", articleid, err.Error())
 		return
 	}
+	var user *dao.User
+	user, err = userService.FindUserByAddress(ctx, article.Creator)
+	if err != nil {
+		logrus.Errorf("find user by id %s failed: %s", article.Creator, err.Error())
+		return
+	}
 	view = &ArticleView{
-		ID:         article.ID,
-		Title:      article.Title,
-		Creator:    article.Creator,
-		CreateTime: article.CreatedAt,
-		AccessNum:  access.AccessNum,
-		LikeNum:    like.LikeNum,
-		Tags:       article.Tags,
+		ID:          article.ID,
+		Title:       article.Title,
+		Creator:     article.Creator,
+		CreateTime:  article.CreatedAt,
+		AccessNum:   access.AccessNum,
+		LikeNum:     like.LikeNum,
+		Tags:        article.Tags,
+		CreatorName: user.Alias,
 	}
 	return
 }
@@ -389,7 +396,7 @@ func (a *article) SearchArticleByPage(ctx context.Context, keyword string, page 
 *
 */
 func (a *article) FindArticleByAccessNum(ctx context.Context, page int, pagesize int) (view *ArticleViewByPage, err error) {
-	articledao := dao.GetArticle()
+	articleservice := GetArticle()
 	accessdao := dao.GetAccess()
 	likedao := dao.GetLike()
 	var total int64
@@ -416,9 +423,9 @@ func (a *article) FindArticleByAccessNum(ctx context.Context, page int, pagesize
 			if err != nil {
 				return
 			}
-			var articleView dao.Article
+			var articleView *ArticleView
 			var tmpError error
-			articleView, tmpError = articledao.FindArticlePaticalById(ctx, articles[index].ID)
+			articleView, tmpError = articleservice.FindArticlePatical(ctx, articles[index].ID)
 			if tmpError != nil {
 				logrus.Errorf("find article by id %d failed: %s", articles[index].ID, tmpError.Error())
 				onceError.Do(func() {
@@ -437,9 +444,10 @@ func (a *article) FindArticleByAccessNum(ctx context.Context, page int, pagesize
 			}
 			articles[index].LikeNum = likeView.LikeNum
 			articles[index].Title = articleView.Title
-			articles[index].CreateTime = articleView.CreatedAt
+			articles[index].CreateTime = articleView.CreateTime
 			articles[index].Creator = articleView.Creator
 			articles[index].Tags = articleView.Tags
+			articles[index].CreatorName = articleView.CreatorName
 		}(i)
 	}
 	wg.Wait()
@@ -465,14 +473,22 @@ func (a *article) FindArticlePaticalByCreateTime(ctx context.Context, page int, 
 		logrus.Errorf("find article by create time failed: %s", err.Error())
 		return
 	}
+	var userService = GetUser()
+	var user *dao.User
 	articleViews := make([]*ArticleView, len(result))
 	for i := 0; i < len(articleViews); i++ {
+		user, err = userService.FindUserByAddress(ctx, result[i].Creator)
+		if err != nil {
+			logrus.Errorf("find user %s failed %s  in find article partical by create time method", result[i].Creator, err.Error())
+			return
+		}
 		articleViews[i] = &ArticleView{
-			ID:         result[i].ID,
-			Title:      result[i].Title,
-			Creator:    result[i].Creator,
-			CreateTime: result[i].CreatedAt,
-			Tags:       result[i].Tags,
+			ID:          result[i].ID,
+			Title:       result[i].Title,
+			Creator:     result[i].Creator,
+			CreateTime:  result[i].CreatedAt,
+			Tags:        result[i].Tags,
+			CreatorName: user.Alias,
 		}
 	}
 	wg := sync.WaitGroup{}

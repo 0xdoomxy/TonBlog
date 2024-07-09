@@ -75,6 +75,7 @@ func (t *tag) GetArticleTotalByName(ctx context.Context, name string) (total uin
 
 func (t *tag) FindArticlesByTagName(ctx context.Context, name string, page int, pagesize int) (view *ArticleViewByPage, err error) {
 	var articles dao.TagRelationships
+	view = new(ArticleViewByPage)
 	articles, err = dao.GetTagRelationship().FindTagRelationshipByName(ctx, name, page, pagesize)
 	if err != nil {
 		logrus.Errorf("find articles by tag name (%s) failed: %s", name, err.Error())

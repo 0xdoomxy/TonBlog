@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/valyala/fasthttp"
 )
@@ -19,7 +20,7 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	fres := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(fres)
-
+	freq.SetTimeout(10 * time.Second)
 	t.copyRequest(freq, req)
 
 	err := fasthttp.Do(freq, fres)

@@ -88,10 +88,17 @@ func bindLikeRoutes(engine *gin.Engine) {
 	})
 }
 func bindCommentRoutes(engine *gin.Engine) {
-	_ = engine.Group("/comment")
-	{
+	router := engine.Group("/comment")
+	router.POST("/create", jwt.NewVerifyMiddleware(), func(ctx *gin.Context) {
+		controller.GetComment().CreateComment(ctx)
+	})
+	router.GET("/find", func(ctx *gin.Context) {
+		controller.GetComment().FindCommentByArticle(ctx)
+	})
+	router.GET("/delete", jwt.NewVerifyMiddleware(), func(ctx *gin.Context) {
+		controller.GetComment().DeleteComment(ctx)
+	})
 
-	}
 }
 
 // TODO test the proof is true

@@ -3,6 +3,9 @@ package service
 import (
 	"blog/dao"
 	"context"
+	"fmt"
+
+	"github.com/sirupsen/logrus"
 )
 
 type like struct {
@@ -14,11 +17,24 @@ func GetLike() *like {
 	return likeService
 }
 
-// TODO before set as like ,should make sure the userid is valid
 func (l *like) SetAsLike(ctx context.Context, publickey string, articleid uint) (err error) {
+	articledao := dao.GetArticle()
+	_, err = articledao.FindArticleById(ctx, articleid)
+	if err != nil {
+		return
+	}
 	likeDAO := dao.GetLike()
 	like_relationshipDAO := dao.GetLikeRelationship()
-
+	var ok bool
+	ok, err = like_relationshipDAO.FindLikeRelationshipByArticleIDAndUserid(ctx, &dao.LikeRelationship{ArticleID: articleid, PublicKey: publickey})
+	if ok || err != nil {
+		if err != nil {
+			logrus.Errorf("find like relationship by articleid and userid failed: %v", err)
+		} else {
+			err = fmt.Errorf("repeat cancel like")
+		}
+		return
+	}
 	like := &dao.Like{
 		ArticleID: articleid,
 		LikeNum:   1,
@@ -40,10 +56,25 @@ func (l *like) SetAsLike(ctx context.Context, publickey string, articleid uint) 
 	return
 }
 
-// TODO before set as like ,should make sure the userid is valid
+// 是否重复点赞或取消点赞
 func (l *like) CancelLike(ctx context.Context, publickey string, articleid uint) (err error) {
+	articledao := dao.GetArticle()
+	_, err = articledao.FindArticleById(ctx, articleid)
+	if err != nil {
+		return
+	}
 	likeDAO := dao.GetLike()
 	like_relationshipDAO := dao.GetLikeRelationship()
+	var ok bool
+	ok, err = like_relationshipDAO.FindLikeRelationshipByArticleIDAndUserid(ctx, &dao.LikeRelationship{ArticleID: articleid, PublicKey: publickey})
+	if ok || err != nil {
+		if err != nil {
+			logrus.Errorf("find like relationship by articleid and userid failed: %v", err)
+		} else {
+			err = fmt.Errorf("repeat cancel like")
+		}
+		return
+	}
 	like := &dao.Like{
 		ArticleID: articleid,
 		LikeNum:   1,

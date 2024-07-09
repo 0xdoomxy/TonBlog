@@ -44,9 +44,16 @@ func (acc *accessConsumerCron) Run() {
 		messages, err = channel.Consume(viper.GetString("rabbitmq.accessqueue"), "", true, false, false, false, nil)
 		if err == amqp.ErrClosed {
 			logrus.Errorf("the rabbitmq channel is closed")
-			channel, err = connection.Channel()
-			if err != nil {
-				logrus.Panicf("create the rabbitmq channel failed:%s", err.Error())
+			if connection.IsClosed() {
+				connection, err = amqp.Dial(dsn)
+				if err != nil {
+					logrus.Fatalf("connect to rabbitmq %s failed: %s", dsn, err.Error())
+				}
+				logrus.Info("connect to rabbitmq success")
+				channel, err = connection.Channel()
+				if err != nil {
+					logrus.Fatal("create the rabbitmq channel failed:", err.Error())
+				}
 			}
 			return
 		}
@@ -73,6 +80,8 @@ func (acc *accessConsumerCron) Run() {
 					logrus.Errorf("increment the access {%v} num to db failed: %s", access, err.Error())
 					continue
 				}
+			case <-channel.NotifyClose(make(chan *amqp.Error)):
+
 			default:
 				time.Sleep(time.Second * 5)
 			}

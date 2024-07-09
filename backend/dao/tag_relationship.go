@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"gorm.io/gorm"
 )
 
 func init() {
@@ -99,22 +101,30 @@ func (t *tagRelationship) BatchDeleteTagRelationship(ctx context.Context, tagRel
 	}
 	return
 }
+
 func (t *tagRelationship) FindTagRelationshipByName(ctx context.Context, name string, page int, pagesize int) (view TagRelationships, err error) {
 	cache := db.GetRedis()
 	key := fmt.Sprintf("%s_%s", t.cacheKey, name)
-	start := (pagesize - 1)
+	start := page - 1
 	size := pagesize
 	var articlesStr []string
 	articlesStr, err = cache.SMembers(ctx, key).Result()
-	if err != redis.Nil {
+	if err != nil || len(articlesStr) > 0 {
 		if err != nil {
 			logrus.Errorf("find tag relationship %s from redis failed:%s", name, err.Error())
 			return
 		}
+		size := max(size, len(articlesStr))
 		view = make(TagRelationships, 0, pagesize)
 		var articleid int
 		var articleStr string
-		for i := start; i < size; i++ {
+		if start >= len(articlesStr) {
+			return
+		}
+		for i := start; i < size+start; i++ {
+			if i >= len(articlesStr) {
+				break
+			}
 			articleStr = articlesStr[i]
 			articleid, err = strconv.Atoi(articleStr)
 			if err != nil {
@@ -130,14 +140,18 @@ func (t *tagRelationship) FindTagRelationshipByName(ctx context.Context, name st
 	}
 	err = db.GetMysql().WithContext(ctx).Model(&TagRelationship{}).Where("name = ?", name).Limit(pagesize).Offset(start).Scan(&view).Error
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			cache.Set(ctx, key, "", time.Minute)
+			return
+		}
 		logrus.Errorf("find tag relationship %s failed:%v", name, err)
 		return
 	}
-	var ids = make([]int, 0, len(view))
+	var ids = make([]any, 0, len(view))
 	for _, v := range view {
-		ids = append(ids, int(v.ArticleId))
+		ids = append(ids, v.ArticleId)
 	}
-	ignoreErr := cache.SAdd(ctx, key, ids).Err()
+	ignoreErr := cache.SAdd(ctx, key, ids...).Err()
 	if ignoreErr != nil {
 		logrus.Errorf("add the tag relationship %v to redis failed:%s", view, ignoreErr.Error())
 	}
