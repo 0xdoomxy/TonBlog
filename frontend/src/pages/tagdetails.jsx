@@ -1,27 +1,25 @@
 import React, { useEffect,useState } from 'react';
-import {ArticleClient} from "../agent/agent";
+import {ArticleClient, TagClient} from "../agent/agent";
 import Constants from "../util/constants";
-import { useNavigate,useSearchParams  } from "react-router-dom";
+import { useNavigate, useSearchParams  } from "react-router-dom";
 import { Header, Spin } from '../components';
 import { ToastContainer, toast } from 'react-toastify';
-import {Tag } from 'antd';
-const SearchPage = () => {
-    const [params] = useSearchParams()
+import { Pagination,Empty,Tag,BackTop } from 'antd';
+const TagDetails = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const tag = searchParams.get("tag");
     const labelColorList = ["blue", "purple", "cyan", "green", "magenta", "pink", "red", "orange", "yellow", "volcano", "geekblue", "lime", "gold"];
-    //是否需要更换header显示
-    const [changeHeader,setChangeHeader]=useState(false);
-    const [searchArticles,setSearchArticles] = useState(undefined);
-    const [searchKeyword,setSearchKeyword] =useState(params.get("keyword"));
+    const [articlesByTag,setArticlesByTag] = useState(undefined);
+    const [pageView,setPageView] = useState({
+        total:0,
+        current:1
+    });
     //正在搜索
     const [isLoad,setIsLoading] = useState(true);
  //搜索文章
-  function searchArticle(){
-    if (searchKeyword=== null || searchKeyword === undefined || searchKeyword === ""){
-        return;
-    }
-    
-    ArticleClient.Search(searchKeyword,1,Constants.PageSize).then((data)=>{
+  function FindArticlesByTag(){
+    TagClient.GetArticleByTag(tag,pageView.current,Constants.PageSize).then((data)=>{
         if(!data.status){
             let msg =data.message;
             if(msg === undefined || msg === null){
@@ -30,7 +28,7 @@ const SearchPage = () => {
             toast.error(msg);
             return;
         }
-        setSearchArticles(data.data.articles.map((item)=>{
+        setArticlesByTag(data.data.articles.map((item)=>{
             if (item.tags !== "") {
                 item.tags = item.tags.split(",");
             } else {
@@ -44,38 +42,31 @@ const SearchPage = () => {
             second: '2-digit'});
             return item;
         }));
+        setPageView((origin)=>{return {...origin,total:data.data.total}});
         setIsLoading(false);
     })
-
 }
+    useEffect(()=>{
+       //初始化要查找的热点文章
+       FindArticlesByTag();
+    },[pageView.current,pageView.total])
     //初始化函数
     useEffect(()=>{
-        //及时搜索文章
-        searchArticle();
-         //监听鼠标滚动事件来改变header
-         const checkScroll =()=>{
-            if(window.scrollY >200){
-                setChangeHeader(true);
-            }else{  
-                setChangeHeader(false);
-            }
-        };
-        window.addEventListener("scroll",checkScroll);
-        return ()=>window.removeEventListener("scroll",checkScroll);
+        //初始化要查找的热点文章
+        FindArticlesByTag();
     },[])
   return (
     <div className=" w-full h-full">
-
+   <BackTop />
         <ToastContainer  />
     {/* header信息 */}
    <Header/>
-    {/**搜索内容主体 */}
+    {/**热点文章内容主体 */}
     {isLoad?<div className='w-full h-full flex justify-center items-center'><Spin isSpin={isLoad} className=" w-20 h-20"/></div>:<div className='flex justify-center items-center'>
         <div className=' w-1/5 h-full'></div>
-        <div className='w-3/5 h-full pt-12'>
-
+        {articlesByTag.length<=0?<div className=' h-screen flex justify-center items-center'><Empty className='pt-12' image={Empty.PRESENTED_IMAGE_SIMPLE} /></div>: <div className='w-3/5 h-full pt-12'>
         <div className=" w-full mt-8">
-    {searchArticles.map((item,index)=>(<div className={`px-2 hover:shadow-lg  transition duration-500 ease-in-out hover:-translate-y-1 hover:scale-105  my-3 min-h-32  border-2 w-full flex  justify-between rounded-md`} key={"newArticle"+index}>
+    {articlesByTag.map((item,index)=>(<div className={`px-2 hover:shadow-lg  transition duration-500 ease-in-out hover:-translate-y-1 hover:scale-105  my-3 min-h-32  border-2 w-full flex  justify-between rounded-md`} key={"newArticle"+index}>
         <div className="flex w-2/3 flex-col justify-center">
         <p className=" font-serif md:text-2xl py-1">{item.title}</p>
         <div className=" flex py-1">
@@ -89,9 +80,9 @@ const SearchPage = () => {
             <div className=" font-serif text-ellipsis text-sm">浏览量:{item.access_num}</div>
         </div>
     </div>))}
-
 </div>
-        </div>
+<Pagination align="end" onChange={(page)=>{setPageView((origin)=>({total:origin.total,current:page}))}} current={pageView.current} pageSize={Constants.PageSize}  defaultCurrent={pageView.current} total={pageView.total} />
+        </div>}
         <div className=' w-1/5 h-full'></div>
     </div>}
     </div>
@@ -99,4 +90,4 @@ const SearchPage = () => {
 };
 
 
-export default SearchPage;
+export default TagDetails;

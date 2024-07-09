@@ -10,12 +10,6 @@ const API_ROOT ="http://localhost:8080";
 //     superagent('Authorization',`Bearer ${token}`);
 // }
 const responseBody = (res) =>{
-  if (res.status === 401) {
-    toast.error("请先登录");
-    SetAuthorizetion(null);
-    localStorage.removeItem(localStorageKey);
-    return;
-  }
     return res.body;
   }
   const tokenPlugin = req => {
@@ -32,27 +26,60 @@ const SetAuthorizetion = (token) =>{
 }
 const requests = {
     del: url =>
-      superagent.del(`${API_ROOT}${url}`).use(tokenPlugin).then(responseBody).catch((e)=>{
+      superagent.del(`${API_ROOT}${url}`).use(tokenPlugin).then(responseBody).catch((res)=>{
+        if (res.status === 401) {
+          toast.error("请先登录");
+          SetAuthorizetion(null);
+          localStorage.removeItem(localStorageKey);
+          window.location.href = "/";
+          return;
+        }
         toast.error("系统出错啦");
       }),
     get: (url) =>
-      superagent.get(`${API_ROOT}${url}`).use(tokenPlugin).then(responseBody).catch((e)=>{
+      superagent.get(`${API_ROOT}${url}`).use(tokenPlugin).then(responseBody).catch((res)=>{
+        if (res.status === 401) {
+          toast.error("请先登录");
+          SetAuthorizetion(null);
+          localStorage.removeItem(localStorageKey);
+          window.location.href = "/";
+          return;
+        }
         toast.error("系统出错啦");
       }),
     put: (url, body) =>
-      superagent.put(`${API_ROOT}${url}`, body).use(tokenPlugin).then(responseBody).catch((e)=>{
+      superagent.put(`${API_ROOT}${url}`, body).use(tokenPlugin).then(responseBody).catch((res)=>{
+        if (res.status === 401) {
+          toast.error("请先登录");
+          SetAuthorizetion(null);
+          localStorage.removeItem(localStorageKey);
+          window.location.href = "/";
+          return;
+        }
         toast.error("系统出错啦");
       }),
     post: (url, body) =>
-      superagent.post(`${API_ROOT}${url}`, body).use(tokenPlugin).then(responseBody).catch((e)=>{
+      superagent.post(`${API_ROOT}${url}`, body).use(tokenPlugin).then(responseBody).catch((res)=>{
+        if (res.status === 401) {
+          toast.error("请先登录");
+          SetAuthorizetion(null);
+          localStorage.removeItem(localStorageKey);
+          window.location.href = "/";
+          return;
+        }
         toast.error("系统出错啦");
       }),
   };
 
 const TagClient = {
   GetAllTags:()=>requests.get(`/tag/findall`),
+  GetArticleByTag:(tag,page,pagesize)=>requests.get(`/tag/findArticle?tag=${encode(tag)}&page=${encode(page)}&pagesize=${encode(pagesize)}`)
 }
-
+const CommentClient = {
+   SearchByArticle:(articleid)=>requests.get(`/comment/find?articleid=${encode(articleid)}`),
+   CreateComment:(comment)=>requests.post(`/comment/create`,comment),
+   DeleteComment:(id,articleid)=>requests.get(`/comment/delete?articleid=${encode(articleid)}&id=${encode(id)}`)
+}
 const ArticleClient = {
     ImageDownload:(file)=>requests.get(`/article/image/download?filename=${encode(file)}`),
     ImageUpload:(file)=>requests.post(`/article/image/upload`,file),
@@ -85,5 +112,5 @@ export {
     LikeClient,
     UserClient,
     SetAuthorizetion,
-    Authorization
+    Authorization,CommentClient
 }

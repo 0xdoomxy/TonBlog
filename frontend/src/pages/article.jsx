@@ -2,13 +2,15 @@ import React,{useEffect,useState} from "react";
 import { Header, Search} from "../components";
 import { useParams,useNavigate } from "react-router-dom";
 import MarkdownContext from "../components/markdown";
-import { LikeClient,ArticleClient } from "../agent/agent";
-import { TonConnectButton,useTonWallet,useTonConnectUI,toUserFriendlyAddress } from "@tonconnect/ui-react";
-import { Tag,Modal,Input,InputNumber,Segmented } from "antd";
+import { LikeClient,ArticleClient, CommentClient, Authorization } from "../agent/agent";
+import { TonConnectButton,useTonWallet,useTonConnectUI } from "@tonconnect/ui-react";
+import { Tag,Modal,Input,InputNumber,Segmented, Button ,BackTop,Avatar} from "antd";
+import { Comment } from "@ant-design/compatible";
 import { toast } from "react-toastify";
 import { UserOutlined,MoneyCollectOutlined  } from '@ant-design/icons';
-
 const ArticlePage =()=>{
+        //文章唯一id
+        const{articleId} =useParams();
     //标签颜色
     const labelColorList = ["blue", "purple", "cyan", "green", "magenta", "pink", "red", "orange", "yellow", "volcano", "geekblue", "lime", "gold"];
     const [article,setArticle] = useState({tags:[],isLike:false});
@@ -20,39 +22,130 @@ const ArticlePage =()=>{
         Name:"About",
         Target:"/about"
     },{Name:"Archieve",Target:"/archieve"}]
-    
+    const [comments,setComments]=useState(new Map());
     const wallet = useTonWallet();
-    const [tonConnectUI,setOptions] = useTonConnectUI();
+    const [tonConnectUI] = useTonConnectUI();
     //是否正在打赏中
     const [rewardModal,setRewardModal] = useState(false);
     //打赏价格
     const [rewardInfo,setRewardInfo] = useState({
         address: "0:9cc2ceadf8282782c3bfe6b7ad0933e59b6f7257025f3fad607106738d91dea0",
-        prices:1000
+        prices:0
     });
-        //是否需要更换header显示
-    const [changeHeader,setChangeHeader]=useState(false);
-    //文章唯一id
-    const{articleId} =useParams();
-    // //markdown文章内容显示ref
-    // const [contextDom,setContextDom] =useRef([]);
-         //小屏幕点击事件，用来显示菜单栏
-     const [showSmallNav,setShowSmallNav]=useState(false);
+    const [createCommentInfo,setCreateCommentInfo] = useState({
+        articleid: Number(articleId),
+        topid: 0,
+    })
      function reward(){
         if (wallet=== undefined || wallet === null){
-            alert("请先登陆");
+            toast.error("请先登陆");
             return;
         }
         tonConnectUI.sendTransaction({messages:[{
             address:rewardInfo.address,
-            amount: rewardInfo.prices
+            amount: rewardInfo.prices*1e9,
+            validUntil: Math.floor(Date.now() / 1000) + 600
         }]}).then((res)=>{
+            console.log(res);
             if(res.status){
-                alert("打赏成功");
+                toast.success("打赏成功");
             }else{
-                alert("打赏失败");
+                toast.error("打赏失败");
             }
         });
+     }
+     //TODO创建评论
+     function createComment(){
+        CommentClient.CreateComment(createCommentInfo).then((res)=>{
+            if (res === undefined || res === null){
+                return;
+            }
+            if (!res.status){
+                let msg = res.message;
+                if (msg === undefined || msg === null){
+                    msg = "系统出错啦";
+                }
+                toast.error(msg);
+                return;
+            }
+            toast.success("评论成功");
+            comments.get(createCommentInfo.topid).push({
+                data:{
+                    TopID:createCommentInfo.topid,
+                    Content:createCommentInfo.content,
+                },
+                children:new Array()
+            });
+        })
+     }
+     //评论显示组件生成器
+     function commentView(comment){
+        return (<>
+            {comment !== undefined  &&comment !=null && comment instanceof Array &&comment.map((item,index)=>{
+                return (
+                    <Comment
+    actions={[<span key="comment-nested-reply-to">Reply to</span>]}
+    author={<a>{item.data.Creator}</a>}
+    avatar={
+      <Avatar
+        src="https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png"
+        alt="Han Solo"
+      />
+    }
+    content={
+      <p>
+      {item.data.Content}
+      </p>
+    }
+  >
+   {commentView(item.children)}
+  </Comment>
+                )
+            })}
+            </>
+        )
+
+     }
+     function searchCommentByArticle(){
+        CommentClient.SearchByArticle(articleId).then((res)=>{
+            if(res == undefined || res == null){
+                return;
+            }
+            if(!res.status){
+                let msg = res.message;
+                if (msg === undefined || msg === null){
+                    msg = "系统出错啦";
+                }
+                toast.error(msg);
+                return;
+            }
+            if (res.data  === undefined || res.data === null){
+                return;
+            }
+            //实现解析comments,递归解析
+            var allComments = res.data;
+            allComments.sort((a,b)=>a.ID-b.ID);
+            var top  = new Map();
+            for (let i = 0; i < allComments.length; i++) {
+                    let item ={data:allComments[i]};
+                    if(top.has(item.data.ID)){
+                        let subItem = top.get(item.ID);
+                        item.children = subItem;
+                    }else{
+                        let childs = new Array();
+                        item.children = childs;
+                        top.set(item.data.ID,childs);
+                    }
+                    if(!top.has(item.data.TopID)){
+                        let childs =new Array();
+                        childs.push(item);
+                        top.set(item.data.TopID,childs);
+                    }else{
+                        top.get(item.data.TopID).push(item);
+                    }
+            }
+            setComments(top);
+        })
      }
     function setAsLike(){
         LikeClient.Add(articleId,1).then((res)=>{
@@ -124,30 +217,24 @@ const ArticlePage =()=>{
             setArticle(item);
         });
     }
-    useState(()=>{
-        if(tonConnectUI.connected){
+    //TODO this function has delay to do 
+    useEffect(()=>{
+        if( Authorization !==undefined && Authorization!==null && Authorization!==""){
             //是否已经点赞
              existLike();
+             //完成登录时初始化评论信息
+             searchCommentByArticle();
         }
-    },[tonConnectUI.connected  ])
+    },[tonConnectUI.connected,Authorization])
       //组件初始化的时候执行的函数
     useEffect(()=>{
         //初始化文章信息
         findArticle();
-        //** 滚动时出现搜索框 */
-        const checkScroll =()=>{
-            if(window.scrollY >200){
-                setChangeHeader(true);
-            }else{  
-                setChangeHeader(false);
-            }
-        };
-        window.addEventListener("scroll",checkScroll);
-        return ()=>window.removeEventListener("scroll",checkScroll);
 },[])
 
     return (
         <div className=" w-full h-full">
+            <BackTop/>
             {/* header for search */}
            <Header/>
                 {/* body */}
@@ -179,16 +266,16 @@ const ArticlePage =()=>{
             <div className=" w-1/6"></div>
             <div className=" w-2/3 h-full">
                 {/* 简介 */}
-                <div className=" flex justify-between w-full h-48">
+                <div className=" flex justify-between w-full ">
                     <div className="w-3/4 flex items-start flex-col">
-                        <div className=" text-6xl font-normal text-ellipsis">{article.title}</div>
+                        <h1 className="w-full text-6xl font-normal  max-h-32 line-clamp-2">{article.title}</h1>
                         <div className=" flex justify-start items-center py-4 ">{article.tags.map((item,index)=>{
-                            return (<Tag color={labelColorList[index%labelColorList.length]}>{item}</Tag>)
+                            return (<Tag key={"tag"+index} color={labelColorList[index%labelColorList.length]}>{item}</Tag>)
                         })}</div>
-                        <div className="w-full text-xl font-serif py-4  truncate " id={article.creator}>{article.creator!==undefined && article.creator!==null &&toUserFriendlyAddress(article.creator)}</div>
+                        <div className="w-full text-xl font-serif py-4  truncate " id={article.creator}>{article.creator_name}</div>
                         <div className=" text-base font-sans ">{article.create_time}</div>
                     </div>
-                    <div className="w-1/4 h-full flex justify-center flex-col">
+                    <div className="w-1/4 h-48 flex justify-center flex-col">
                         <div className="h-1/2 border-x-2 border-t-2 text-sm  md:text-lg  w-full  font-serif flex items-center justify-center">
                             浏览量:{article.access_num}
                         </div>
@@ -201,8 +288,8 @@ const ArticlePage =()=>{
               <MarkdownContext  context={article.content}/>
               </div>
         <div className=" w-full pt-24 pb-4 flex justify-end  ">
-        {wallet === undefined || wallet === null?<div className="w-1/3 flex justify-end items-center  ">
-                   <TonConnectButton   className=" md:w-20 h-8"  />
+        {!tonConnectUI.connected?<div className="w-1/3 flex justify-end items-center  ">
+                   <Button  style={{backgroundColor: 'rgb(0, 152, 234)'}} className=" hover:shadow-lg transition duration-500 ease-in-out  hover:-translate-y-1 hover:scale-105  rounded-full md:w-32 h-10 text-white " onClick={()=>tonConnectUI.openModal()}>Conntect Wallet</Button>
                         </div> :<div  className=" w-1/3 flex flex-row justify-end items-center">    
                             <div className=" px-2 cursor-pointer ">
                             {!article.isLike?<svg onClick={()=>{setAsLike()}} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
@@ -221,12 +308,20 @@ const ArticlePage =()=>{
                             </div>}
                
         </div>
-        {wallet !== undefined && wallet !== null&&<div className="w-full flex flex-row">
+        {tonConnectUI.connected&&<><div className="w-full flex flex-col">
            <div className=" w-full flex flex-col">
 <label htmlFor="message" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">评论</label>
-<textarea id="message" rows="4" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Write your thoughts here..."></textarea>
+<textarea value={createCommentInfo.content} onChange={(value)=>{setCreateCommentInfo((origin)=>({...origin,content:value.target.value}))}} id="message" rows="4" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Write your thoughts here..."></textarea>
 </div>
-            </div>}
+<div className=" mt-1 flex justify-end">
+    <Button style={{backgroundColor: 'rgb(0, 152, 234)'}} className="hover:shadow-lg transition duration-500 ease-in-out  hover:-translate-y-1 hover:scale-105 text-white rounded-full" onClick={()=>{
+        createComment();
+    }}>提交</Button>
+</div>
+
+            </div><div className=" mt-4">
+    {commentView(comments.get(0))}
+</div></>}
         </div>
         <div className=" w-1/6"></div>
         </div>

@@ -55,7 +55,7 @@ const AboutPage = ()=>{
                     </div>
                     <div className="w-full pl-4 h-full flex justify-start items-center">
                     <Timeline
-        pending="Recording..."
+        pending="keep going..."
         reverse={false}
         items={[
           {

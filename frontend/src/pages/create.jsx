@@ -15,6 +15,7 @@ import {ArticleClient,TagClient} from '../agent/agent';
 import { MatchImageUrlFromMarkdown } from '../util/image';
 import { toast } from 'react-toastify';
 import { Modal,Mentions } from "antd";
+import { useNavigate } from 'react-router-dom';
 const CreatePage = () => {
     const plugins = useMemo(() => [gfm(), highlightssr(), highlight(), breaks(), footnotes(), frontmatter(), gemoji(), mediumZoom()], []);
     const [article,setArticle] = useState({
@@ -22,6 +23,7 @@ const CreatePage = () => {
         content:'',
         tags:[],
     });
+    const navigate =useNavigate();
     const [rawTags,setRawTags] = useState("");
     const [showModal,setShowModal] = useState(false);
     const [alltags,setAllTags] = useState([]);
@@ -38,7 +40,7 @@ const CreatePage = () => {
                 toast.error(msg);
                 return;
             }
-            setAllTags(data.data.map((value,index)=>{ return {value:value.name,label:value.name,key:index}}));
+            setAllTags(data.data.map((item,index)=>{ return {value:item.Name,label:item.Name}}));
         })
     }
     useEffect(()=>{
@@ -57,7 +59,10 @@ const CreatePage = () => {
         }
     }
     let newArticle = article;
-    newArticle.tags = rawTags.replace(" ",",");
+    newArticle.tags = rawTags.replace(/\s+/g, ',');
+    if (newArticle.tags === ","){
+        newArticle.tags = String(newArticle.tags).slice(0,-1);
+    }
         let pushParams = new FormData();
         pushParams.append('title',newArticle.title);
         pushParams.append('content',newArticle.content);
@@ -68,9 +73,6 @@ const CreatePage = () => {
                 return;
             }
             if (!res.status){
-                if(res.data === undefined ||res.data === null){
-                    return;
-                }
                 let msg =res.data.message;
                 if(msg === undefined || msg === null){
                     msg = "系统出错啦";
@@ -86,11 +88,11 @@ const CreatePage = () => {
             <Modal onOk={publicArticle}  cancelText="取消" okText="发布文章"  open={showModal} onCancel={()=>{setShowModal(false)}} >
                 <div className=' flex h-20 mt-10  justify-start items-center'>
                     <div className="w-1/6 font-semibold">文章标签</div>
-            <Mentions className=' w-5/6' prefix=" "  split=' ' onChange={(option)=>{setRawTags(option)}}  options={alltags} />
+            <Mentions className=' w-5/6' prefix=" "  split=' ' value={rawTags}  onChange={(option)=>{setRawTags(option)}}  options={alltags} />
             </div>
             </Modal>
             <div className='w-full h-20 flex flex-row justify-start py-2 '>
-                <div className='md:w-24 flex justify-center items-center '>
+                <div className='md:w-24 flex justify-center items-center ' onClick={()=>{navigate("/")}}>
                 <svg  xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className=" w-12 cursor-pointer ">
   <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
 </svg>

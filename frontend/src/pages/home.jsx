@@ -1,15 +1,14 @@
 import React, { useEffect,useState } from "react";
 
 import Constants from "../util/constants";
-import { toUserFriendlyAddress  } from '@tonconnect/ui-react';
 import { useNavigate } from "react-router-dom";
 import {TagClient,ArticleClient} from "../agent/agent";
 import {  toast } from 'react-toastify';
-import { Tag  } from "antd";
+import { Tag,BackTop  } from "antd";
 import { Header } from "../components";
 
 const HomePage = ()=>{
-    const defaultTagsViewNum =3
+    const defaultTagsViewNum =12;
     const navigate = useNavigate();
     const labelColorList = ["blue", "purple", "cyan", "green", "magenta", "pink", "red", "orange", "yellow", "volcano", "geekblue", "lime", "gold"];
      //所有的标签列表       
@@ -19,16 +18,11 @@ const HomePage = ()=>{
     //所有可见的标签列表    
     const [openAllTags,setOpenAllTags]=useState(false);
     //可见标签列表
-    const [tags,setTags]=useState([]);
+    // const [tags,setTags]=useState([]);
     //最新文章列表
     const [newArticles,setNewArticles]=useState([]);
     //热门文章列表
     const [hotAriticles,setHotArticles]=useState([]);
-    useEffect(()=>{
-        if(allTags !== undefined && allTags!==null&&allTags instanceof Array){
-             setTags(allTags.slice(0,curTagViewNum));
-        }
-    },[curTagViewNum])
     //获取所有标签
     function getAllTags(){
         TagClient.GetAllTags().then((data)=>{
@@ -43,6 +37,8 @@ const HomePage = ()=>{
                 toast.error(msg);
                 return;
             }
+
+            console.log(data.data);
             setAllTags(data.data);
         })
     }
@@ -135,38 +131,38 @@ const HomePage = ()=>{
         }
        setOpenAllTags(!openAllTags);
     }
-    
     return(
         <div className=" w-full h-full">
+            <BackTop/>
           <Header/>
-
-            <div className=" pt-12 w-full    flex justify-center items-center">
+            <div className=" w-full    flex justify-center items-start pt-12">
                 <div className=" w-1/10"></div>
-                <div className=" w-4/5 pt-8 ">
+                <div className=" w-4/5 pt-8 h-full">
                     <div className="grid grid-flow-row grid-cols-3  md:grid-cols-6 gap-10">
-                    {tags.map((item,index)=>{
+                    {allTags.map((item,index)=>{
                         if(index >= curTagViewNum){
                             return;
                         }
                         return (
-                        <div  className=" my-3 min-h-8 h-8  min-w-24 max-w-28 justify-center rounded-xl flex  text-center text-lg cursor-pointer  " key={"tag"+item.Name}>
+                        <div  className=" my-3 min-h-8 h-8  min-w-24 max-w-28 justify-center rounded-xl flex  text-center text-lg cursor-pointer  " onClick={()=>{navigate(`/articles/tag?tag=${item.Name}`)}} key={"tag"+item.Name}>
                             <p className="hover:text-blue-500 text-sm font-semibold">{item.Name}</p>
                             <div className="min-w-6 min-h-3 h-4 bg-stone-200  text-xs rounded-lg ">{item.ArticleNum}</div>
                         </div>
                     )})}
                     </div>
-                    {tags.length>curTagViewNum?<div  className="w-full flex justify-end cursor-pointer" onClick={showAllTagsOnclick}>
+                    <div  className="w-full flex justify-end cursor-pointer" onClick={showAllTagsOnclick}>
                      {openAllTags?<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
 <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
 </svg>
-:<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+:<div  className="w-full flex justify-end cursor-pointer" onClick={showAllTagsOnclick}><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
 <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-</svg>}
-</div>:<></>}
+</svg></div>}
+</div>
+<div className=" items-center justify-evenly flex flex-col ">
 <div className=" w-full mt-8">
     <div className="w-full flex justify-between items-center py-6 ">
     <p className=" font-serif font-semibold text-3xl  text-center">最新文章</p>
-    <div className=" cursor-pointer hover:translate-x-2 duration-500 transition-transform">
+    <div className=" cursor-pointer hover:translate-x-2 duration-500 transition-transform" onClick={()=>{navigate("/article/newest")}}>
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-7">
   <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
 </svg>
@@ -177,9 +173,9 @@ const HomePage = ()=>{
         <div className="flex w-2/3 flex-col justify-center">
         <p className=" font-serif md:text-2xl py-1">{item.title}</p>
         <div className=" flex py-1">
-        {item.tags!==null && item.tags instanceof Array && item.tags.length>0&&item.tags.map((tag,index)=>(<Tag color={labelColorList[index%labelColorList.length]}>{tag}</Tag>) )}
+        {item.tags!==null && item.tags instanceof Array && item.tags.length>0&&item.tags.map((tag,index)=>(<Tag className=" text-center" color={labelColorList[index%labelColorList.length]}>{tag}</Tag>) )}
         </div>
-        <div className=" font-normal text-md truncate">{toUserFriendlyAddress(item.creator)}</div>
+        <div className=" font-normal text-md truncate">{item.creator_name}</div>
         <div  className=" font-normal text-sm">{item.create_time}</div>
         </div>
         <div className=" flex justify-center w-1/3 items-center flex-col">
@@ -192,7 +188,7 @@ const HomePage = ()=>{
 <div className=" w-full mt-8">
     <div className="w-full flex justify-between items-center py-6 ">
     <p className=" font-serif font-semibold text-3xl  text-center">热门文章</p>
-    <div className=" cursor-pointer hover:translate-x-2 duration-500 transition-transform">
+    <div className=" cursor-pointer hover:translate-x-2 duration-500 transition-transform" onClick={()=>{navigate("/article/hot")}}>
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-7">
   <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
 </svg>
@@ -205,7 +201,7 @@ const HomePage = ()=>{
         <div className=" flex py-1">
         {item.tags!=null && item.tags instanceof Array &&item.tags.length>0&&item.tags.map((tag,index)=>(<Tag color={labelColorList[index%labelColorList.length]}>{tag}</Tag>) )}
         </div>
-        <div className=" font-normal text-md truncate">{toUserFriendlyAddress(item.creator)}</div>
+        <div className=" font-normal text-md truncate">{item.creator_name}</div>
         <div  className=" font-normal text-sm">{item.create_time}</div>
         </div>
         <div className=" flex justify-center w-1/3 items-center flex-col">
@@ -213,6 +209,7 @@ const HomePage = ()=>{
             <div className=" font-serif text-ellipsis text-sm">浏览量:{item.access_num}</div>
         </div>
     </div>))}
+</div>
 </div>
                 </div>
                 <div className=" w-1/10"></div>
