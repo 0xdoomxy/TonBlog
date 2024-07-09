@@ -1,5 +1,4 @@
-# blog
-personal blog
+# A Great Attempt: Integrating Ton Chain's Payment Model into the Web2 Platform
 
 
 ## 2024.06.02-2024.06.15
