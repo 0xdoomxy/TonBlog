@@ -4,15 +4,13 @@ import Constants from "../util/constants";
 import { useNavigate,useSearchParams  } from "react-router-dom";
 import { Header, Spin } from '../components';
 import { ToastContainer, toast } from 'react-toastify';
-import {Tag } from 'antd';
+import {Tag,Empty } from 'antd';
 const SearchPage = () => {
     const [params] = useSearchParams()
     const navigate = useNavigate();
     const labelColorList = ["blue", "purple", "cyan", "green", "magenta", "pink", "red", "orange", "yellow", "volcano", "geekblue", "lime", "gold"];
-    //是否需要更换header显示
-    const [changeHeader,setChangeHeader]=useState(false);
     const [searchArticles,setSearchArticles] = useState(undefined);
-    const [searchKeyword,setSearchKeyword] =useState(params.get("keyword"));
+    const searchKeyword=params.get("keyword");
     //正在搜索
     const [isLoad,setIsLoading] = useState(true);
  //搜索文章
@@ -52,16 +50,6 @@ const SearchPage = () => {
     useEffect(()=>{
         //及时搜索文章
         searchArticle();
-         //监听鼠标滚动事件来改变header
-         const checkScroll =()=>{
-            if(window.scrollY >200){
-                setChangeHeader(true);
-            }else{  
-                setChangeHeader(false);
-            }
-        };
-        window.addEventListener("scroll",checkScroll);
-        return ()=>window.removeEventListener("scroll",checkScroll);
     },[])
   return (
     <div className=" w-full h-full">
@@ -71,11 +59,11 @@ const SearchPage = () => {
    <Header/>
     {/**搜索内容主体 */}
     {isLoad?<div className='w-full h-full flex justify-center items-center'><Spin isSpin={isLoad} className=" w-20 h-20"/></div>:<div className='flex justify-center items-center'>
+    {searchArticles>0?<>
         <div className=' w-1/5 h-full'></div>
         <div className='w-3/5 h-full pt-12'>
-
         <div className=" w-full mt-8">
-    {searchArticles.map((item,index)=>(<div className={`px-2 hover:shadow-lg  transition duration-500 ease-in-out hover:-translate-y-1 hover:scale-105  my-3 min-h-32  border-2 w-full flex  justify-between rounded-md`} key={"newArticle"+index}>
+   {searchArticles.map((item,index)=>(<div className={`px-2 hover:shadow-lg  transition duration-500 ease-in-out hover:-translate-y-1 hover:scale-105  my-3 min-h-32  border-2 w-full flex  justify-between rounded-md`} key={"newArticle"+index}>
         <div className="flex w-2/3 flex-col justify-center">
         <p className=" font-serif md:text-2xl py-1">{item.title}</p>
         <div className=" flex py-1">
@@ -93,6 +81,7 @@ const SearchPage = () => {
 </div>
         </div>
         <div className=' w-1/5 h-full'></div>
+       </> :<div className=' h-screen flex justify-center items-center'><Empty/></div>}
     </div>}
     </div>
   );

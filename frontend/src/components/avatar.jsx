@@ -19,7 +19,7 @@ const TonAvatar = ({wallet,disconnect}) => {
     </div>
     <ul className="py-2 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownInformationButton">
     <li>
-        <a onClick={()=>{navigate("/article/create")}} className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Create</a>
+        <a onClick={()=>{navigate("/article/create")}} className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">创建文章</a>
       </li>
       <li>
         <a href="#" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Dashboard</a>

@@ -75,6 +75,7 @@ func (u *user) FindUserByAddress(ctx context.Context, address string) (user User
 	err = db.GetMysql().Model(&User{}).Where("address = ?", address).First(&user).Error
 	if err != nil {
 		logrus.Errorf("find user %v failed from mysql:%s", address, err.Error())
+		return
 	}
 	ignoreErr := cache.Set(ctx, key, &user, 3*time.Minute).Err()
 	if ignoreErr != nil {

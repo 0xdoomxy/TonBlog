@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: always
+    volumes:
+      - ./development/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./development/nginx/ssl/nginx.key:/etc/ssl/certs/nginx.key
+      - ./development/nginx/ssl/nginx.crt:/etc/ssl/certs/nginx.crt
+      - ./frontend/dist/:/usr/share/nginx/html/
+    ports:
+      - 443:443
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ./backend/.dockerfile
+    image: blog_backend:latest
+    container_name: blog_backend
+    restart: always
+    expose: 
+      - "8080"
+
+     

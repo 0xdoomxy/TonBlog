@@ -85,6 +85,7 @@ func init() {
 						logrus.Errorf("dump the like relationship failed: %v", err)
 					}
 				}
+				os.Exit(0)
 
 			default:
 				time.Sleep(time.Second * 5)

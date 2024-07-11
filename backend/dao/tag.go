@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
@@ -153,7 +154,7 @@ func (t *tag) FindAllTags(ctx context.Context) (tags Tags, err error) {
 		logrus.Errorf("get all tags from  mysql:%s", err.Error())
 		return
 	}
-	ignoreErr := cache.Set(ctx, ALL_TAGS_CACHE_KEY, &tags, 0).Err()
+	ignoreErr := cache.Set(ctx, ALL_TAGS_CACHE_KEY, &tags, 2*time.Minute).Err()
 	if ignoreErr != nil {
 		logrus.Errorf("all tags set the redis error :%s", ignoreErr.Error())
 	}

@@ -30,12 +30,12 @@ const Header = () => {
     //搜索到的文章
     const [searchArticles,setSearchArticles] = useState([]);
         const navItems=[{
-            Name:"Home",
+            Name:"主页",
             Target:"/"
         },{
-            Name:"About",
+            Name:"作者简介",
             Target:"/about"
-        },{Name:"Archieve",Target:"/archieve"}]
+        }]
     //tron 钱包
     const wallet = useTonWallet();
     //tron 连接
@@ -175,10 +175,12 @@ const Header = () => {
             <h1 className=" flex align-middle font-serif text-wrap h-full text-xl md:text-3xl cursor-pointer pl-2 "  onClick={()=>{window.location.href="https://github.com/0xdoomxy"}}>0xdoomxy</h1>
             </div>
             <div className="w-1/2   hidden  md:flex justify-start items-center">
+                <div className=' w-2/3 flex flex-row justify-evenly'>
                     {navItems.map((item,index)=>(
                         <div onClick={()=>{navigate(item.Target)}} className=" hover:-translate-y-1 duration-500  text-center text-lg px-4 lg:px-8 cursor-pointer " key={"nav"+index}>{item.Name}</div>
                     ))}
-                    <div className=" lg:pl-24 pl-6   ">
+                    </div>
+                    <div className=" lg:pl-24 pl-6  flex justify-start ">
                         <div className=" cursor-pointer " onClick={()=>{setOpenSearch(true)}}>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
 <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -188,8 +190,8 @@ const Header = () => {
             </div>
             <div className=" hidden md:flex w-1/8 justify-evenly ">{tonConnectUI.connected?<TonAvatar wallet={wallet} disconnect={()=>{tonConnectUI.disconnect()}}/>:<TonConnectButton/>}</div>
             </div>)}
-            {changeHeader&&
-            <div className="w-full h-full">
+            {  changeHeader&&
+            <div className="w-full h-full hidden md:flex">
                 <Search  onKeyDown={(event)=>{if(event.keyCode!==13){return;}if(event.target.value == undefined || event.target.value == null ){return }navigate(`/search?keyword=${event.target.value}`,)}}/>
                </div> 
                 }

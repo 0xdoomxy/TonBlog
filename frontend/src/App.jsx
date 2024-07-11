@@ -1,7 +1,7 @@
 
 import './App.css';
 import { Route, HashRouter as Router, Routes } from 'react-router-dom';
-import { CreatePage, ArticlePage, SearchPage, HomePage, ArchivesPage, AboutPage,HotDetails, NewDetails, TagDetails} from "./pages";
+import { CreatePage, ArticlePage, SearchPage, HomePage, AboutPage,HotDetails, NewDetails, TagDetails} from "./pages";
 import { Bounce, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css'; 
 import { useBackendAuth } from "./hooks/ton";
@@ -13,7 +13,7 @@ function App() {
       <Routes>
       <Route path={'/'} Component={HomePage} />
       <Route path={'/about'} Component={AboutPage} />
-      <Route path={'/archieve'} Component={ArchivesPage} />
+      {/* <Route path={'/archieve'} Component={ArchivesPage} /> */}
       <Route path={'/article/create'} Component={CreatePage}/> 
       <Route path={'/article/:articleId'} Component={ArticlePage} />
       <Route path={'/search'} Component={SearchPage}/>

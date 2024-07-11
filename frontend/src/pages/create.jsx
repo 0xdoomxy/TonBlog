@@ -14,7 +14,7 @@ import zhHans from 'bytemd/lib/locales/zh_Hans.json'
 import {ArticleClient,TagClient} from '../agent/agent';
 import { MatchImageUrlFromMarkdown } from '../util/image';
 import { toast } from 'react-toastify';
-import { Modal,Mentions } from "antd";
+import { Modal,Mentions,Tag } from "antd";
 import { useNavigate } from 'react-router-dom';
 const CreatePage = () => {
     const plugins = useMemo(() => [gfm(), highlightssr(), highlight(), breaks(), footnotes(), frontmatter(), gemoji(), mediumZoom()], []);
@@ -23,8 +23,10 @@ const CreatePage = () => {
         content:'',
         tags:[],
     });
+     //标签颜色
+     const labelColorList = ["blue", "purple", "cyan", "green", "magenta", "pink", "red", "orange", "yellow", "volcano", "geekblue", "lime", "gold"];
     const navigate =useNavigate();
-    const [rawTags,setRawTags] = useState("");
+    const [rawTags,setRawTags] = useState("@区块链");
     const [showModal,setShowModal] = useState(false);
     const [alltags,setAllTags] = useState([]);
     function getAllTags(){
@@ -59,9 +61,9 @@ const CreatePage = () => {
         }
     }
     let newArticle = article;
-    newArticle.tags = rawTags.replace(/\s+/g, ',');
-    if (newArticle.tags === ","){
-        newArticle.tags = String(newArticle.tags).slice(0,-1);
+    newArticle.tags = rawTags.trim().replace(/\s/g, '').replace(/@/g, ',');
+    if (newArticle.tags.length>0&&newArticle.tags[0] === ","){
+        newArticle.tags = String(newArticle.tags).slice(1,newArticle.tags.length);
     }
         let pushParams = new FormData();
         pushParams.append('title',newArticle.title);
@@ -88,28 +90,29 @@ const CreatePage = () => {
             <Modal onOk={publicArticle}  cancelText="取消" okText="发布文章"  open={showModal} onCancel={()=>{setShowModal(false)}} >
                 <div className=' flex h-20 mt-10  justify-start items-center'>
                     <div className="w-1/6 font-semibold">文章标签</div>
-            <Mentions className=' w-5/6' prefix=" "  split=' ' value={rawTags}  onChange={(option)=>{setRawTags(option)}}  options={alltags} />
+            <Mentions className=' w-5/6'  defaultValue='@区块链'  value={rawTags} onChange={(option)=>{setRawTags(option)}}  options={alltags} />
             </div>
             </Modal>
-            <div className='w-full h-20 flex flex-row justify-start py-2 '>
-                <div className='md:w-24 flex justify-center items-center ' onClick={()=>{navigate("/")}}>
+            <div className='w-full h-20 flex flex-row justify-start items-center py-2 '>
+                <div className='md:w-24 flex justify-center items-center pl-2 ' onClick={()=>{navigate("/")}}>
                 <svg  xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className=" w-12 cursor-pointer ">
   <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
 </svg>
 
                 </div>
-                <input  className='  w-4/5 indent-8 text-3xl font-semibold font-serif outline-none ' onChange={(e)=>{setArticle({...article,title:e.target.value})}} placeholder={article.title} ></input>
-                <div className=' flex justify-end items-center  h-full w-1/10'>
-                    <button  className=' h-full  md:w-28 border-2 rounded-xl bg-blue-400 ' onClick={()=>{setShowModal(true)}}>发布文章</button>
+                <input  className=' w-4/5 indent-8 text-3xl font-semibold font-serif outline-none ' onChange={(e)=>{setArticle({...article,title:e.target.value})}} placeholder={article.title} ></input>
+                <div className=' flex justify-end items-center  h-full w-1/5 pr-2'>
+                    <button  style={{backgroundColor: 'rgb(0, 152, 234)'}} className=' w-full h-full text-sm   md:w-28 border-2 rounded-xl font-semibold' onClick={()=>{setShowModal(true)}}>发布文章</button>
                 </div>
             </div>
-        <Editor className=" w-full"
+        <Editor 
        locale={zhHans}
        value={article.content}  //markdown内容
        plugins={plugins}  //markdown中用到的插件，如表格、数学公式、流程图
        onChange={(v) => {
          setArticle({ ...article, content: v });
        }}
+       
        uploadImages={async (files) => {   
             //上传图片
             let form = new FormData();
@@ -133,7 +136,7 @@ const CreatePage = () => {
                 },
                 ];
         }}
- />
+  />
         </div> 
     );
     }

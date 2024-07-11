@@ -23,10 +23,10 @@ const ArticlePage =()=>{
         Target:"/about"
     },{Name:"Archieve",Target:"/archieve"}]
     const [comments,setComments]=useState(new Map());
-    const wallet = useTonWallet();
+    // const wallet = useTonWallet();
     const [tonConnectUI] = useTonConnectUI();
     //是否正在打赏中
-    const [rewardModal,setRewardModal] = useState(false);
+    // const [rewardModal,setRewardModal] = useState(false);
     //打赏价格
     const [rewardInfo,setRewardInfo] = useState({
         address: "0:9cc2ceadf8282782c3bfe6b7ad0933e59b6f7257025f3fad607106738d91dea0",
@@ -36,24 +36,25 @@ const ArticlePage =()=>{
         articleid: Number(articleId),
         topid: 0,
     })
-     function reward(){
-        if (wallet=== undefined || wallet === null){
-            toast.error("请先登陆");
-            return;
-        }
-        tonConnectUI.sendTransaction({messages:[{
-            address:rewardInfo.address,
-            amount: rewardInfo.prices*1e9,
-            validUntil: Math.floor(Date.now() / 1000) + 600
-        }]}).then((res)=>{
-            console.log(res);
-            if(res.status){
-                toast.success("打赏成功");
-            }else{
-                toast.error("打赏失败");
-            }
-        });
-     }
+    //reward
+    //  function reward(){
+    //     if (wallet=== undefined || wallet === null){
+    //         toast.error("请先登陆");
+    //         return;
+    //     }
+    //     tonConnectUI.sendTransaction({messages:[{
+    //         address:rewardInfo.address,
+    //         amount: rewardInfo.prices*1e9,
+    //         validUntil: Math.floor(Date.now() / 1000) + 600
+    //     }]}).then((res)=>{
+    //         console.log(res);
+    //         if(res.status){
+    //             toast.success("打赏成功");
+    //         }else{
+    //             toast.error("打赏失败");
+    //         }
+    //     });
+    //  }
      //TODO创建评论
      function createComment(){
         CommentClient.CreateComment(createCommentInfo).then((res)=>{
@@ -239,7 +240,7 @@ const ArticlePage =()=>{
            <Header/>
                 {/* body */}
         <div className="w-full h-full pt-20 flex items-start ">
-            <Modal title="Ton" className=" z-0" onOk={()=>{reward()}} open={rewardModal} okText="赞助" cancelText="离开" onCancel={()=>{setRewardModal(false)}}>
+            {/* <Modal title="Ton" className=" z-0" onOk={()=>{reward()}} open={rewardModal} okText="赞助" cancelText="离开" onCancel={()=>{setRewardModal(false)}}>
                     <Input className=" mt-4" prefix={<UserOutlined />} value={rewardInfo.address} disabled></Input>
                     <InputNumber className=" my-4" value={rewardInfo.prices} onChange={(value)=>{setRewardInfo((old)=>({...old,prices:value}))}}
       suffix="Ton"
@@ -262,7 +263,7 @@ const ArticlePage =()=>{
   />
   </div>
     </div>
-            </Modal>
+            </Modal> */}
             <div className=" w-1/6"></div>
             <div className=" w-2/3 h-full">
                 {/* 简介 */}
@@ -299,12 +300,12 @@ const ArticlePage =()=>{
 </svg>
 }
                             </div>
-                            <div className=" px-2 cursor-pointer" onClick={()=>{setRewardModal(true)}} >
+                            {/* <div className=" px-2 cursor-pointer" onClick={()=>{setRewardModal(true)}} >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
   <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
 </svg>
 
-                            </div>
+                            </div> */}
                             </div>}
                
         </div>
