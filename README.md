@@ -1,3 +1,5 @@
+
+![Ton Icons](https://github.com/0xdoomxy/blog/blob/main/images/ton_symbol.png)
 # A Great Attempt: Integrating Ton Chain's User Verify Model into the Web2 Platform
 
 
