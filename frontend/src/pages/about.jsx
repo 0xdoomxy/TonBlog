@@ -51,7 +51,9 @@ const AboutPage = ()=>{
                 <div className="pl-6 pt-6 h-full flex flex-col">
                     <div className="flex flex-col">
                         <h1 className=" font-serif font-semibold md:text-xl pb-2">简&nbsp;&nbsp;&nbsp;&nbsp;介</h1>
-                        <div className=" font-serif indent-4">本科就读于区块链工程专业,主要研究方向有区块链、大数据、云原生、全栈开发,技术栈为Golang、JavaScript、Solidity、java。</div>
+                        <div className=" font-serif indent-4">本科就读于区块链工程专业,主要研究方向有区块链、大数据、云原生、全栈开发,技术栈为Golang、JavaScript、Solidity、java。曾在 Bytedance Cloudwego Team 的项目中做过contributor、同时荣获2023年Ethereum Contributor。
+                          在学习过程中参与并主导过多个项目的研发工程目前主导的开源项目为<a href="https://github.com/0xdoomxy/blog">blog</a>,致力于成为web3技术知识分享的主流平台之一。
+                         </div>
                     </div>
                     <div className="w-full pl-4 h-full flex justify-start items-center">
                     <Timeline

@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 const superagent = superagentPromise(_superagent, Promise);
 
 const localStorageKey = 'blog-auth-token';
-const API_ROOT ="http://localhost:8080";
+const API_ROOT ="https://www.0xdoomxy.top/blog";
 
 // const SetAuthorizetion = (token) =>{
 //     superagent('Authorization',`Bearer ${token}`);
@@ -83,7 +83,7 @@ const CommentClient = {
 const ArticleClient = {
     ImageDownload:(file)=>requests.get(`/article/image/download?filename=${encode(file)}`),
     ImageUpload:(file)=>requests.post(`/article/image/upload`,file),
-    ImageDownloadUrl:(filename)=>`${API_ROOT}/article/image/download?filename=${encode(filename)}`,
+    ImageDownloadUrl:(filename)=>`/article/image/download?filename=${encode(filename)}`,
     Publish:(article)=>requests.post(`/article/publish`,article),
     Find:(articleId)=>requests.get(`/article/find?id=${encode(articleId)}`),
     FindMaxAccess:(page,pagesize)=>requests.get(`/article/findbymaxaccess?page=${encode(page)}&pagesize=${encode(pagesize)}`),
