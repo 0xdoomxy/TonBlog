@@ -1,4 +1,4 @@
-# A Great Attempt: Integrating Ton Chain's Payment Model into the Web2 Platform
+# A Great Attempt: Integrating Ton Chain's User Verify Model into the Web2 Platform
 
 
 
