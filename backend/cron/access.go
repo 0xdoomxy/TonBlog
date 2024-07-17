@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
@@ -67,23 +66,25 @@ func (acc *accessConsumerCron) Run() {
 			case msg := <-messages:
 				raw := msg.Body
 				if len(raw) <= 0 {
+					msg.Ack(true)
 					return
 				}
 				var access = dao.Access{}
 				err = json.Unmarshal(raw, &access)
 				if err != nil {
+					msg.Ack(false)
 					logrus.Errorf("consumer unmarshal the access {%v} failed: %s", msg.Body, err.Error())
-					continue
+					return
 				}
 				err = accessDao.IncrementAccessNumToDB(context.TODO(), access)
 				if err != nil {
+					msg.Ack(false)
 					logrus.Errorf("increment the access {%v} num to db failed: %s", access, err.Error())
-					continue
+					return
 				}
-			case <-channel.NotifyClose(make(chan *amqp.Error)):
-
+				msg.Ack(true)
 			default:
-				time.Sleep(time.Second * 5)
+				return
 			}
 		}
 	}))

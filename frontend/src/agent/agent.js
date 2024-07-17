@@ -83,7 +83,7 @@ const CommentClient = {
 const ArticleClient = {
     ImageDownload:(file)=>requests.get(`/article/image/download?filename=${encode(file)}`),
     ImageUpload:(file)=>requests.post(`/article/image/upload`,file),
-    ImageDownloadUrl:(filename)=>`/article/image/download?filename=${encode(filename)}`,
+    ImageDownloadUrl:(filename)=>`/blog/article/image/download?filename=${encode(filename)}`,
     Publish:(article)=>requests.post(`/article/publish`,article),
     Find:(articleId)=>requests.get(`/article/find?id=${encode(articleId)}`),
     FindMaxAccess:(page,pagesize)=>requests.get(`/article/findbymaxaccess?page=${encode(page)}&pagesize=${encode(pagesize)}`),

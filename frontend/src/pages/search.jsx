@@ -42,6 +42,7 @@ const SearchPage = () => {
             second: '2-digit'});
             return item;
         }));
+        console.log(searchArticles);
         setIsLoading(false);
     })
 
