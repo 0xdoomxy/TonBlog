@@ -5,11 +5,8 @@ import { Timeline } from "antd";
 import avatar from "../asserts/avatar.jpg";
 import { Header, TonAvatar } from "../components";
 const AboutPage = ()=>{
-    const navigate=useNavigate();
     //tron 钱包
     const wallet = useTonWallet();
-    //tron 连接
-    const [tonConnectUI] = useTonConnectUI();
     const navItems=[{
         Name:"Home",
         Target:"/"
@@ -17,8 +14,6 @@ const AboutPage = ()=>{
         Name:"About",
         Target:"/about"
     },{Name:"Archieve",Target:"/archieve"}]
-    //小屏幕点击事件，用来显示菜单栏
-    const [showSmallNav,setShowSmallNav]=useState(false);
     return (
         <div className="w-full h-full ">
            <Header/>
@@ -48,14 +43,14 @@ const AboutPage = ()=>{
                      </div>
                 </div>
                 {/* 右边 */}
-                <div className="pl-6 pt-6 h-full flex flex-col">
-                    <div className="flex flex-col">
+                <div className="w-full h-full pl-6 pt-6  flex flex-col">
+                    <div className="w-full h-1/3 flex flex-col">
                         <h1 className=" font-serif font-semibold md:text-xl pb-2">简&nbsp;&nbsp;&nbsp;&nbsp;介</h1>
-                        <div className=" font-serif indent-4">本科就读于区块链工程专业,主要研究方向有区块链、大数据、云原生、全栈开发,技术栈为Golang、JavaScript、Solidity、java。曾在 Bytedance Cloudwego Team 的项目中做过contributor、同时荣获2023年Ethereum Contributor。
-                          在学习过程中参与并主导过多个项目的研发工程目前主导的开源项目为<a href="https://github.com/0xdoomxy/blog">blog</a>,致力于成为web3技术知识分享的主流平台之一。
-                         </div>
+                        <p className=" font-serif indent-4 md:text-lg text-sm line-clamp-8  md:max-h-full max-h-64  overflow-y-scroll  md:overflow-auto">本科就读于区块链工程专业,主要研究方向有区块链、大数据、云原生、全栈开发,技术栈为Golang、JavaScript、Solidity、java。曾在 Bytedance Cloudwego Team 的项目中做过contributor、同时荣获2023年Ethereum Contributor。
+                          在学习过程中参与并主导过多个项目的研发工程目前主导的开源项目为<a href="https://github.com/0xdoomxy/blog" className=" underline">blog</a>,致力于成为web3技术知识分享的主流平台之一。
+                         </p>
                     </div>
-                    <div className="w-full pl-4 h-full flex justify-start items-center">
+                    <div className="w-full pl-4 h-2/3 flex justify-start items-center">
                     <Timeline
         pending="keep going..."
         reverse={false}
@@ -77,7 +72,7 @@ const AboutPage = ()=>{
                     </div>
                 </div>
             </div>
-            <div className=" flex w-full h-20 border-t-2  bg-slate-50 justify-center items-center " style={{height:"15%"}}>
+            <div className=" flex w-full h-20 border-t-2  bg-slate-50 justify-center items-center " >
                 <div className=" w-1/5"></div>
             <div className=" h-20  w-full flex justify-around items-center">
                 <div className=" w-1/2 text-md md:pl-10">© 0xdoomxy 保留所有权利</div>
