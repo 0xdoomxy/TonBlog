@@ -11,6 +11,7 @@ import Constants from '../util/constants';
 import { ArticleClient } from '../agent/agent';
 import { toast } from 'react-toastify';
 const Header = () => {
+    
     const labelColorList = ["blue", "purple", "cyan", "green", "magenta", "pink", "red", "orange", "yellow", "volcano", "geekblue", "lime", "gold"];
         //是否需要更换header显示
         const [changeHeader,setChangeHeader]=useState(false);
@@ -23,7 +24,7 @@ const Header = () => {
     const [showSmallNav,setShowSmallNav]=useState(false);
     const [total,setTotal] = useState(0);
     useEffect(()=>{
-        if (keyword !== null && keyword !== undefined ){
+        if (keyword !== null && keyword !== undefined&& keyword!== "" ){
             searchArticle(1,false);
         }
     },[keyword])

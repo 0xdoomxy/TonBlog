@@ -396,7 +396,6 @@ func (a *article) SearchArticleByPage(ctx context.Context, keyword string, page 
 *
 */
 func (a *article) FindArticleByAccessNum(ctx context.Context, page int, pagesize int) (view *ArticleViewByPage, err error) {
-	articleservice := GetArticle()
 	accessdao := dao.GetAccess()
 	likedao := dao.GetLike()
 	var total int64
@@ -425,7 +424,7 @@ func (a *article) FindArticleByAccessNum(ctx context.Context, page int, pagesize
 			}
 			var articleView *ArticleView
 			var tmpError error
-			articleView, tmpError = articleservice.FindArticlePatical(ctx, articles[index].ID)
+			articleView, tmpError = a.FindArticlePatical(ctx, articles[index].ID)
 			if tmpError != nil {
 				logrus.Errorf("find article by id %d failed: %s", articles[index].ID, tmpError.Error())
 				onceError.Do(func() {

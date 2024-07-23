@@ -1,8 +1,8 @@
 package db
 
 import (
-	elasticsearch "github.com/elastic/go-elasticsearch/v8"
-	"github.com/elastic/go-elasticsearch/v8/esapi"
+	elasticsearch "github.com/elastic/go-elasticsearch/v7"
+	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -18,12 +18,12 @@ func init() {
 	var err error
 	es, err = elasticsearch.NewClient(cfg)
 	if err != nil {
-		logrus.Panic("connect to elasticsearch failed:", err.Error())
+		logrus.Panicf("connect to elasticsearch %v failed: %s", cfg, err.Error())
 	}
 	var resp *esapi.Response
 	resp, err = es.Ping()
 	if err != nil {
-		logrus.Panic("ping elasticsearch failed:", err.Error())
+		logrus.Panicf("ping elasticsearch %v failed: %s", cfg, err.Error())
 	}
 	defer resp.Body.Close()
 	logrus.Info("connect to elasticsearch success")

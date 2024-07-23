@@ -11,6 +11,7 @@ const SearchPage = () => {
     const labelColorList = ["blue", "purple", "cyan", "green", "magenta", "pink", "red", "orange", "yellow", "volcano", "geekblue", "lime", "gold"];
     const [searchArticles,setSearchArticles] = useState(undefined);
     const searchKeyword=params.get("keyword");
+    const [isEmpty,setIsEmpty] = useState(false);
     //正在搜索
     const [isLoad,setIsLoading] = useState(true);
  //搜索文章
@@ -42,11 +43,21 @@ const SearchPage = () => {
             second: '2-digit'});
             return item;
         }));
-        console.log(searchArticles);
         setIsLoading(false);
     })
 
 }
+useEffect(()=>{
+    if(searchArticles===undefined){
+        setIsEmpty(true);
+        return;
+    }
+    if(searchArticles.length<=0){
+        setIsEmpty(true);
+    }else{
+        setIsEmpty(false);
+    }
+},[searchArticles])
     //初始化函数
     useEffect(()=>{
         //及时搜索文章
@@ -60,7 +71,7 @@ const SearchPage = () => {
    <Header/>
     {/**搜索内容主体 */}
     {isLoad?<div className='w-full h-full flex justify-center items-center'><Spin isSpin={isLoad} className=" w-20 h-20"/></div>:<div className='flex justify-center items-center'>
-    {searchArticles>0?<>
+    {!isEmpty?<>
         <div className=' w-1/5 h-full'></div>
         <div className='w-3/5 h-full pt-12'>
         <div className=" w-full mt-8">

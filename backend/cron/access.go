@@ -6,21 +6,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/streadway/amqp"
 )
 
 type accessConsumerCron struct {
-	internal *cron.Cron
 }
 
 func NewAccessConsumerCron() *accessConsumerCron {
-	return &accessConsumerCron{
-		internal: cron.New(),
-	}
-
+	return &accessConsumerCron{}
 }
 
 func (acc *accessConsumerCron) Run() {
@@ -35,34 +30,19 @@ func (acc *accessConsumerCron) Run() {
 	var channel *amqp.Channel
 	channel, err = connection.Channel()
 	if err != nil {
-		logrus.Fatal("create the rabbitmq channel failed:", err.Error())
+		logrus.Fatalf("create the rabbitmq channel failed:%s", err.Error())
 	}
-	accessDao := dao.GetAccess()
-	acc.internal.AddJob("*/2 * * * *", cron.FuncJob(func() {
+	go func() {
+		var accessDao = dao.GetAccess()
 		var messages <-chan amqp.Delivery
 		messages, err = channel.Consume(viper.GetString("rabbitmq.accessqueue"), "", true, false, false, false, nil)
-		if err == amqp.ErrClosed {
-			logrus.Errorf("the rabbitmq channel is closed")
-			if connection.IsClosed() {
-				connection, err = amqp.Dial(dsn)
-				if err != nil {
-					logrus.Fatalf("connect to rabbitmq %s failed: %s", dsn, err.Error())
-				}
-				logrus.Info("connect to rabbitmq success")
-				channel, err = connection.Channel()
-				if err != nil {
-					logrus.Fatal("create the rabbitmq channel failed:", err.Error())
-				}
-			}
-			return
-		}
 		if err != nil {
 			logrus.Errorf("consume the rabbitmq queue failed:%s", err.Error())
 			return
 		}
-		for {
+		for true {
 			select {
-			//TODO level=error msg="consumer unmarshal the access {{0 0}} failed: unexpected end of JSON input"
+
 			case msg := <-messages:
 				raw := msg.Body
 				if len(raw) <= 0 {
@@ -83,10 +63,8 @@ func (acc *accessConsumerCron) Run() {
 					return
 				}
 				msg.Ack(true)
-			default:
-				return
 			}
+
 		}
-	}))
-	acc.internal.Start()
+	}()
 }

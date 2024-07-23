@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/elastic/go-elasticsearch/v8/esapi"
+	"github.com/elastic/go-elasticsearch/v7"
+	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -36,9 +36,9 @@ func init() {
 	if resp.IsError() {
 		// elasticsearch schema
 		mapping := `{
-			"settings":{
-				"number_of_shards":3,
-				"number_of_replicas":1,
+			"settings": {
+				"number_of_shards": 3,
+				"number_of_replicas": 0,
 				"analysis": {
 					"analyzer": {
 						"comma": {
@@ -46,36 +46,20 @@ func init() {
 							"pattern": ","
 						}
 					}
-				},
-				"mappings":{
-					"properties":{
-						"content":{
-							"type":"text",
-							"analyzer": "ik_max_word"
-						},
-						"tags":{
-							"type":"text",
-							"analyzer": "comma"
-						},
-						"title":{
-							"type":"text",
-							"analyzer": "ik_max_word"
-						}
-					}
 				}
 			},
-			"mappings":{
-				"properties":{
-					"content":{
-						"type":"text",
+			"mappings": {
+				"properties": {
+					"content": {
+						"type": "text",
 						"analyzer": "ik_max_word"
 					},
-					"tags":{
-						"type":"text",
+					"tags": {
+						"type": "text",
 						"analyzer": "comma"
 					},
-					"title":{
-						"type":"text",
+					"title": {
+						"type": "text",
 						"analyzer": "ik_max_word"
 					}
 				}
@@ -119,7 +103,7 @@ type Article struct {
 	Title   string `gorm:"type:varchar(255);not null"`
 	Tags    string `gorm:"tags"`
 	Creator string `gorm:"varchar(64);not null"`
-	Content string `gorm:"typel:text;not null"`
+	Content string `gorm:"type:text;not null"`
 	Images  string `gorm:"type:varchar(1000)"`
 }
 
