@@ -9,8 +9,15 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
+
+func GetLikePreifxKey() string {
+	return _l.TableName()
+}
+
+func GetLike() *like {
+	return likeDao
+}
 
 func init() {
 	db.GetMysql().AutoMigrate(&Like{})
@@ -28,34 +35,10 @@ var likeDao *like
 
 func newLikeDao() *like {
 	return &like{
-		cacheKey: viper.GetString("like.cachekeyPrefix"),
+		cacheKey: _l.TableName(),
 		onceMaps: make(map[uint]any),
 		rwmutex:  sync.RWMutex{},
 	}
-}
-
-func GetLike() *like {
-	return likeDao
-}
-
-/*
-*
-
-	文章关注总览表
-
-*
-*/
-type Like struct {
-	ArticleID uint `gorm:"not null;Index:searchLike"`
-	LikeNum   uint `gorm:"not null"`
-}
-
-func (like *Like) MarshalBinary() ([]byte, error) {
-	return json.Marshal(like)
-}
-
-func (like *Like) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, like)
 }
 
 func (l *like) initLikeToCache(ctx context.Context, articleId uint) (err error) {
@@ -190,4 +173,24 @@ func (l *like) compensateLike(articleid uint) {
 	l.rwmutex.Lock()
 	delete(l.onceMaps, articleid)
 	l.rwmutex.Unlock()
+}
+
+// should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
+var _l = &Like{}
+
+/*文章关注总览表*/
+type Like struct {
+	ArticleID uint `gorm:"not null;Index:searchLike"`
+	LikeNum   uint `gorm:"not null"`
+}
+
+func (like *Like) TableName() string {
+	return "like"
+}
+func (like *Like) MarshalBinary() ([]byte, error) {
+	return json.Marshal(like)
+}
+
+func (like *Like) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, like)
 }

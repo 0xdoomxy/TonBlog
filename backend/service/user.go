@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 type user struct {
@@ -52,17 +53,18 @@ func (u *user) AutoCreateIfNotExist(ctx context.Context, address string, alias s
 	}()
 	user, err = userdao.FindUserByAddress(ctx, address)
 	if err != nil {
-		logrus.Errorf("find user %v failed: %s", address, err.Error())
-		return
-	}
-	if user == (dao.User{}) {
-		err = userdao.CreateUser(&dao.User{
-			Address: address,
-			Alias:   alias,
-		})
-		if err != nil {
-			logrus.Errorf("create user %v failed: %s", address, err.Error())
+		if err != gorm.ErrRecordNotFound {
+			logrus.Errorf("find user %v failed: %s", address, err.Error())
 			return
+		} else {
+			err = userdao.CreateUser(&dao.User{
+				Address: address,
+				Alias:   alias,
+			})
+			if err != nil {
+				logrus.Errorf("create user %v failed: %s", address, err.Error())
+				return
+			}
 		}
 	}
 	u.cache.AddWithValue(address, &user, 1)

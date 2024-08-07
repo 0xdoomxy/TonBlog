@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 )
 
-func init() {
-	db.GetMysql().AutoMigrate(&Reward{})
+func GetReward() *reward {
+	return rewardDao
 }
 
 type reward struct {
@@ -14,33 +14,6 @@ type reward struct {
 }
 
 var rewardDao = &reward{}
-
-func GetReward() *reward {
-	return rewardDao
-}
-
-/*
-*
-
-	打赏表
-
-*
-*/
-type Reward struct {
-	ID          uint   `gorm:"primaryKey"`
-	CreateAt    uint64 `gorm:"autoCreateTime:milli"`
-	ArticleID   uint   `gorm:"not null;index:searchforarticle"`
-	UserAddress string `gorm:"varchar(64);not null;index:searchforuser"`
-	Amount      uint   `gorm:"not null"`
-}
-
-func (reward *Reward) MarshalBinary() ([]byte, error) {
-	return json.Marshal(reward)
-}
-
-func (reward *Reward) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, reward)
-}
 
 func (r *reward) CreateReward(reward *Reward) (err error) {
 	err = db.GetMysql().Model(&Reward{}).Create(reward).Error
@@ -73,4 +46,32 @@ func (r *reward) FindRewardByArticleId(articleId uint) (rewards []Reward, err er
 func (r *reward) FindRewardByUserId(userId uint) (rewards []Reward, err error) {
 	err = db.GetMysql().Model(&Reward{}).Where("user_address = ?", userId).Find(&rewards).Error
 	return
+}
+
+func init() {
+	db.GetMysql().AutoMigrate(&Reward{})
+}
+
+// should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
+var _r = &Reward{}
+
+/*打赏表*/
+type Reward struct {
+	ID          uint   `gorm:"primaryKey"`
+	CreateAt    uint64 `gorm:"autoCreateTime:milli"`
+	ArticleID   uint   `gorm:"not null;index:searchforarticle"`
+	UserAddress string `gorm:"varchar(64);not null;index:searchforuser"`
+	Amount      uint   `gorm:"not null"`
+}
+
+func (reward *Reward) TableName() string {
+	return "reward"
+}
+
+func (reward *Reward) MarshalBinary() ([]byte, error) {
+	return json.Marshal(reward)
+}
+
+func (reward *Reward) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, reward)
 }

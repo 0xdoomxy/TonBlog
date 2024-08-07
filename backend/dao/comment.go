@@ -10,9 +10,12 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
+
+func GetComment() *comment {
+	return commentDao
+}
 
 func init() {
 	db.GetMysql().AutoMigrate(&Comment{})
@@ -28,35 +31,8 @@ var commentDao *comment
 
 func newCommentDao() *comment {
 	return &comment{
-		cachekey: viper.GetString("comment.cachekeyprefix"),
+		cachekey: _c.TableName(),
 	}
-}
-func GetComment() *comment {
-	return commentDao
-}
-
-/*
-*
-
-	评论表
-
-*
-*/
-type Comment struct {
-	ID        uint `gorm:"primaryKey;autoIncrement"`
-	CreateAt  time.Time
-	TopID     uint   `gorm:"not null;index:search"`
-	Content   string `gorm:"type:varchar(255);not null"`
-	ArticleID uint   `gorm:"not null;index:search"`
-	Creator   string `gorm:"varchar(64) not null;index:search"`
-}
-
-func (comment *Comment) MarshalBinary() ([]byte, error) {
-	return json.Marshal(comment)
-}
-
-func (comment *Comment) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, comment)
 }
 
 func (c *comment) CreateComment(ctx context.Context, comment *Comment) (err error) {
@@ -136,4 +112,28 @@ func (c *comment) FindCommentByArticleid(ctx context.Context, articleid uint) (v
 		logrus.Errorf("set the comment cache by articleid %d failed: %v", articleid, ignoreErr)
 	}
 	return
+}
+
+// should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
+var _c = &Comment{}
+
+/*评论表*/
+type Comment struct {
+	ID        uint `gorm:"primaryKey;autoIncrement"`
+	CreateAt  time.Time
+	TopID     uint   `gorm:"not null;index:search"`
+	Content   string `gorm:"type:varchar(255);not null"`
+	ArticleID uint   `gorm:"not null;index:search"`
+	Creator   string `gorm:"varchar(64) not null;index:search"`
+}
+
+func (comment *Comment) TableName() string {
+	return "comment"
+}
+func (comment *Comment) MarshalBinary() ([]byte, error) {
+	return json.Marshal(comment)
+}
+
+func (comment *Comment) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, comment)
 }

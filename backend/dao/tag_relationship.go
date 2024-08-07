@@ -10,50 +10,23 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
 
-func init() {
-	tagRelationshipDao = newTagRelationshipDao()
-	db.GetMysql().AutoMigrate(&TagRelationship{})
-}
-
-type TagRelationship struct {
-	Name      string `gorm:"type:varchar(255);primary_key"`
-	ArticleId uint   `gorm:"type:int;primary_key"`
-}
-
-func (tr *TagRelationship) MarshalBinary() ([]byte, error) {
-	return json.Marshal(tr)
-}
-func (tr *TagRelationship) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, tr)
-}
-
-type TagRelationships []*TagRelationship
-
-func (trs *TagRelationships) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, trs)
-}
-func (trs *TagRelationships) MarshalBinary() ([]byte, error) {
-	return json.Marshal(trs)
+func GetTagRelationship() *tagRelationship {
+	return tagRelationshipDao
 }
 
 type tagRelationship struct {
 	cacheKey string
 }
 
-var tagRelationshipDao *tagRelationship
+var tagRelationshipDao *tagRelationship = newTagRelationshipDao()
 
 func newTagRelationshipDao() *tagRelationship {
 	return &tagRelationship{
-		cacheKey: viper.GetString("tag.relationship.cacheKeyPrefix"),
+		cacheKey: _tr.TableName(),
 	}
-}
-
-func GetTagRelationship() *tagRelationship {
-	return tagRelationshipDao
 }
 
 func (t *tagRelationship) CreateTagRelationship(ctx context.Context, tagRelationship *TagRelationship) (err error) {
@@ -167,4 +140,37 @@ func (t *tagRelationship) DeleteTagRelationship(ctx context.Context, tagRelation
 	}
 	err = db.GetMysql().WithContext(ctx).Model(&TagRelationship{}).Where("name = ? and article_id = ?", tagRelationship.Name, tagRelationship.ArticleId).Delete(&TagRelationship{}).Error
 	return
+}
+
+type TagRelationships []*TagRelationship
+
+func (trs *TagRelationships) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, trs)
+}
+func (trs *TagRelationships) MarshalBinary() ([]byte, error) {
+	return json.Marshal(trs)
+}
+
+func init() {
+	db.GetMysql().AutoMigrate(&TagRelationship{})
+}
+
+// should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
+var _tr = &TagRelationship{}
+
+/*标签关系表*/
+type TagRelationship struct {
+	Name      string `gorm:"type:varchar(255);primary_key"`
+	ArticleId uint   `gorm:"type:int;primary_key"`
+}
+
+func (tr *TagRelationship) TableName() string {
+	return "tag_relationship"
+}
+
+func (tr *TagRelationship) MarshalBinary() ([]byte, error) {
+	return json.Marshal(tr)
+}
+func (tr *TagRelationship) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, tr)
 }

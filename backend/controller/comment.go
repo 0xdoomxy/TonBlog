@@ -34,6 +34,10 @@ func (c *comment) CreateComment(ctx *gin.Context) {
 		ctx.JSON(200, utils.NewFailedResponse("参数错误"))
 		return
 	}
+	if comment.Content == "" {
+		ctx.JSON(200, utils.NewFailedResponse("评论内容不能为空"))
+		return
+	}
 	err = service.GetComment().CreateComment(ctx, uint(comment.ArticleID), creator.(string), comment.Content, comment.TopID)
 	if err != nil {
 		ctx.JSON(200, utils.NewFailedResponse("评论失败"))

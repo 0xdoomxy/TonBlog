@@ -25,7 +25,7 @@ const Header = () => {
     const [total,setTotal] = useState(0);
     useEffect(()=>{
         if (keyword !== null && keyword !== undefined&& keyword!== "" ){
-            searchArticle(1,false);
+               searchArticle(1,false);
         }
     },[keyword])
     //搜索到的文章

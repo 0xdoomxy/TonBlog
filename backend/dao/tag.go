@@ -9,15 +9,14 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
 
 // cant repeat from any tag cache key name
 const ALL_TAGS_CACHE_KEY = "tags"
 
-func init() {
-	db.GetMysql().AutoMigrate(&Tag{})
+func GetTag() *tag {
+	return tagDao
 }
 
 type tag struct {
@@ -29,40 +28,8 @@ var tagDao *tag = newTagDao()
 
 func newTagDao() *tag {
 	return &tag{
-		cachekey: viper.GetString("tag.cachekeyPrefix"),
+		cachekey: _t.TableName(),
 	}
-}
-func GetTag() *tag {
-	return tagDao
-}
-
-type Tags []*Tag
-
-func (tags *Tags) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, tags)
-}
-func (tags *Tags) MarshalBinary() ([]byte, error) {
-	return json.Marshal(tags)
-}
-
-/*
-*
-
-	标签表
-
-*
-*/
-type Tag struct {
-	Name       string `gorm:"type:varchar(255);primaryKey"`
-	ArticleNum uint   `gorm:"not null"`
-}
-
-func (tag *Tag) MarshalBinary() ([]byte, error) {
-	return json.Marshal(tag)
-}
-
-func (tag *Tag) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, tag)
 }
 
 func (t *tag) CreateTag(ctx context.Context, tag *Tag) (err error) {
@@ -159,4 +126,38 @@ func (t *tag) FindAllTags(ctx context.Context) (tags Tags, err error) {
 		logrus.Errorf("all tags set the redis error :%s", ignoreErr.Error())
 	}
 	return
+}
+
+type Tags []*Tag
+
+func (tags *Tags) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, tags)
+}
+func (tags *Tags) MarshalBinary() ([]byte, error) {
+	return json.Marshal(tags)
+}
+
+func init() {
+	db.GetMysql().AutoMigrate(&Tag{})
+}
+
+// should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
+var _t = &Tag{}
+
+/*标签表*/
+type Tag struct {
+	Name       string `gorm:"type:varchar(255);primaryKey"`
+	ArticleNum uint   `gorm:"not null"`
+}
+
+func (tag *Tag) TableName() string {
+	return "tag"
+}
+
+func (tag *Tag) MarshalBinary() ([]byte, error) {
+	return json.Marshal(tag)
+}
+
+func (tag *Tag) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, tag)
 }

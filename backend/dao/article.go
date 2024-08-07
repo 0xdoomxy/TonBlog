@@ -20,22 +20,8 @@ import (
 	"gorm.io/gorm"
 )
 
-var articleContentBucketName string
-
-func init() {
-	articleContentEsIndex := viper.GetString("article.contentsearchindex")
-	db.GetMysql().AutoMigrate(&Article{})
-	//init elasticsearch index and mapper
-	es := db.GetElasticsearch()
-	var err error
-	var resp *esapi.Response
-	resp, err = es.Indices.Exists([]string{articleContentEsIndex})
-	if err != nil {
-		logrus.Panic("check the index exist failed:", err.Error())
-	}
-	if resp.IsError() {
-		// elasticsearch schema
-		mapping := `{
+// elasticsearch schema
+const mapping = `{
 			"settings": {
 				"number_of_shards": 3,
 				"number_of_replicas": 0,
@@ -65,6 +51,23 @@ func init() {
 				}
 			}
 		}`
+
+func GetArticle() *article {
+	return articleDao
+}
+
+func init() {
+	articleContentEsIndex := viper.GetString("article.contentsearchindex")
+	db.GetMysql().AutoMigrate(&Article{})
+	//init elasticsearch index and mapper
+	es := db.GetElasticsearch()
+	var err error
+	var resp *esapi.Response
+	resp, err = es.Indices.Exists([]string{articleContentEsIndex})
+	if err != nil {
+		logrus.Panic("check the index exist failed:", err.Error())
+	}
+	if resp.IsError() {
 		resp, err = es.Indices.Create(articleContentEsIndex, es.Indices.Create.WithBody(strings.NewReader(mapping)))
 		if err != nil {
 			logrus.Panicf("create the index %s mapper %s failed: %s", articleContentEsIndex, mapping, err.Error())
@@ -76,8 +79,10 @@ func init() {
 	articleDao.searchEngine = es
 	articleDao.esIndex = articleContentEsIndex
 	articleDao.cachems = viper.GetInt64("cache.cleaninterval")
-	articleDao.cachekeyPrefix = viper.GetString("article.cachekeyPrefix")
+	articleDao.cachekeyPrefix = _a.TableName()
 }
+
+var articleContentBucketName string
 
 type article struct {
 	_              [0]func()
@@ -88,32 +93,6 @@ type article struct {
 }
 
 var articleDao = &article{}
-
-func GetArticle() *article {
-	return articleDao
-}
-
-/*
-*
-文章表
-*
-*/
-type Article struct {
-	gorm.Model
-	Title   string `gorm:"type:varchar(255);not null"`
-	Tags    string `gorm:"tags"`
-	Creator string `gorm:"varchar(64);not null"`
-	Content string `gorm:"type:text;not null"`
-	Images  string `gorm:"type:varchar(1000)"`
-}
-
-func (a *Article) MarshalBinary() ([]byte, error) {
-	return json.Marshal(a)
-}
-
-func (a *Article) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, a)
-}
 
 func (a *article) CreateArticle(ctx context.Context, article *Article) (err error) {
 	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Create(article).Error
@@ -295,4 +274,28 @@ func (a *article) FindArticlePaticalByCreateTime(ctx context.Context, page, size
 		return
 	}
 	return
+}
+
+// should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
+var _a = &Article{}
+
+/*文章表*/
+type Article struct {
+	gorm.Model
+	Title   string `gorm:"type:varchar(255);not null"`
+	Tags    string `gorm:"tags"`
+	Creator string `gorm:"varchar(64);not null"`
+	Content string `gorm:"type:longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;not null"`
+	Images  string `gorm:"type:varchar(1000)"`
+}
+
+func (a *Article) TableName() string {
+	return "article"
+}
+func (a *Article) MarshalBinary() ([]byte, error) {
+	return json.Marshal(a)
+}
+
+func (a *Article) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, a)
 }

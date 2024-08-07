@@ -56,7 +56,7 @@ const payloadTTLMS = 1000 * 60 * 20;
                     const inspectLogin = function(){
                         if(Authorization === undefined ||Authorization === null){
                             if(tonConnectUI.connected){
-                            tonConnectUI.disconnect();
+                                tonConnectUI.disconnect();
                             }
                         }
                     }
@@ -75,7 +75,7 @@ const payloadTTLMS = 1000 * 60 * 20;
             }
             })
         } else {
-          toast.error('Please try another wallet');
+          toast.error('请尝试换一个钱包');
             tonConnectUI.disconnect();
         }
 

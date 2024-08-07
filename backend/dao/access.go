@@ -18,6 +18,10 @@ import (
 	"gorm.io/gorm"
 )
 
+func GetAccess() *access {
+	return accessDao
+}
+
 func init() {
 	db.GetMysql().AutoMigrate(&Access{})
 	// init thr rabbit mq channel
@@ -47,7 +51,7 @@ func init() {
 	accessDao.mqChannel = channel
 	accessDao.exchange = articleExchange
 	accessDao.routingKey = accessQueue
-	accessDao.cacheKey = viper.GetString("access.cachekeyPrefix")
+	accessDao.cacheKey = _acc.TableName()
 	go func() {
 		// flush the access cache to rabbitmq
 		ticker := time.NewTicker(2 * time.Minute)
@@ -113,30 +117,6 @@ type access struct {
 var accessDao = &access{
 	delayMap: make(map[uint]uint),
 	mutex:    sync.Mutex{},
-}
-
-/*
-*
-
-	访问表
-
-*
-*/
-type Access struct {
-	ArticleID uint `gorm:"primaryKey"`
-	AccessNum uint `gorm:"not null"`
-}
-
-func (a *Access) MarshalBinary() ([]byte, error) {
-	return json.Marshal(a)
-}
-
-func (a *Access) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, a)
-}
-
-func GetAccess() *access {
-	return accessDao
 }
 
 func (a *access) CreateAccess(ctx context.Context, access *Access) (err error) {
@@ -220,4 +200,25 @@ func (a *access) IncrementAccessNumToDB(ctx context.Context, access Access) (err
 		logrus.Errorf("increment access %v number to db error:%s", access, err.Error())
 	}
 	return
+}
+
+// should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
+var _acc = &Access{}
+
+/*访问表*/
+type Access struct {
+	ArticleID uint `gorm:"primaryKey"`
+	AccessNum uint `gorm:"not null"`
+}
+
+func (a *Access) TableName() string {
+	return "access"
+}
+
+func (a *Access) MarshalBinary() ([]byte, error) {
+	return json.Marshal(a)
+}
+
+func (a *Access) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, a)
 }

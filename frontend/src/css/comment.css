@@ -1,0 +1,11 @@
+/* 默认样式，适用于小屏设备 */
+.comment {
+    width: 256px;
+  }
+  
+  /* 当屏幕宽度大于或等于 768px 时，应用以下样式 */
+  @media (min-width: 768px) {
+    .comment {
+      width: 720px;
+    }
+  }

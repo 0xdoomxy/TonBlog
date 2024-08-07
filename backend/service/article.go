@@ -79,6 +79,12 @@ func (a *article) DownloadImage(filename string) (res []byte, err error) {
 	return res, nil
 }
 
+/**
+
+删除图片
+
+**/
+
 /*
 *
 

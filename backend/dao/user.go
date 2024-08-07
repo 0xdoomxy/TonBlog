@@ -9,12 +9,10 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
-func init() {
-	db.GetMysql().AutoMigrate(&User{})
-	userDao = newUserDao()
+func GetUser() *user {
+	return userDao
 }
 
 type user struct {
@@ -22,36 +20,12 @@ type user struct {
 	cachekey string
 }
 
-var userDao *user
+var userDao *user = newUserDao()
 
 func newUserDao() *user {
 	return &user{
-		cachekey: viper.GetString("user.cachekeyPrefix"),
+		cachekey: _u.TableName(),
 	}
-}
-func GetUser() *user {
-	return userDao
-}
-
-/*
-*
-
-	用户表
-
-*
-*/
-type User struct {
-	Address   string `gorm:"type:varchar(64);primary_key"`
-	Alias     string `gorm:"type:varchar(255);not null"`
-	CreatedAt time.Time
-}
-
-func (user *User) MarshalBinary() ([]byte, error) {
-	return json.Marshal(user)
-}
-
-func (user *User) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, user)
 }
 
 func (u *user) CreateUser(user *User) (err error) {
@@ -111,4 +85,32 @@ func (u *user) UpdateUser(ctx context.Context, user *User) (err error) {
 		logrus.Errorf("update the user %v failed:%s", user, err.Error())
 	}
 	return
+}
+
+func init() {
+	db.GetMysql().AutoMigrate(&User{})
+}
+
+// should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
+var _u = &User{}
+
+/*用户表*/
+type User struct {
+	Address   string `gorm:"type:varchar(64);primary_key"`
+	Alias     string `gorm:"type:varchar(255);not null"`
+	CreatedAt time.Time
+	//TODO we should pass this field to notify the user who starts up the subscribe function  the new message is arriving
+	//TgAccount string `gorm:"type:varchar(255);not null"`
+}
+
+func (user *User) TableName() string {
+	return "user"
+}
+
+func (user *User) MarshalBinary() ([]byte, error) {
+	return json.Marshal(user)
+}
+
+func (user *User) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, user)
 }

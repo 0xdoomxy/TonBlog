@@ -10,7 +10,6 @@ import (
 
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
 type likeConsumerCron struct {
@@ -29,7 +28,7 @@ func (lcc *likeConsumerCron) Run() {
 		var cache = db.GetRedis()
 		var err error
 		var keys []string
-		cachekeys := fmt.Sprintf("%s*", viper.GetString("like.cachekeyPrefix"))
+		cachekeys := dao.GetLikePreifxKey()
 		keys, err = cache.Keys(context.TODO(), cachekeys).Result()
 		if err != nil {
 			logrus.Errorf("get keys from redis failed: %s", err.Error())
@@ -44,7 +43,7 @@ func (lcc *likeConsumerCron) Run() {
 			if err != nil {
 				continue
 			}
-			articleidStr, found = strings.CutPrefix(key, fmt.Sprintf("%s_", viper.GetString("like.cachekeyPrefix")))
+			articleidStr, found = strings.CutPrefix(key, fmt.Sprintf("%s_", dao.GetLikePreifxKey()))
 			if !found {
 				continue
 			}

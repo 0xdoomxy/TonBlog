@@ -42,7 +42,6 @@ func (acc *accessConsumerCron) Run() {
 		}
 		for true {
 			select {
-
 			case msg := <-messages:
 				raw := msg.Body
 				if len(raw) <= 0 {

@@ -37,6 +37,10 @@ redis.call('DEL', KEYS[1])
 return members`
 )
 
+func GetLikeRelationship() *likeRelationship {
+	return likeRelationshipDao
+}
+
 func init() {
 	db.GetMysql().AutoMigrate(&LikeRelationship{})
 	likeRelationshipDao = newLikeRelationshipDao()
@@ -46,13 +50,13 @@ func init() {
 		**/
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+		defer signal.Stop(sigs)
 		for {
 			select {
 			case <-sigs:
 				cache := db.GetRedis()
 				var res any
 				var err error
-
 				var userPublicKeys []any
 				var ok bool
 				for articleid := range likeRelationshipDao.times {
@@ -85,14 +89,15 @@ func init() {
 						logrus.Errorf("dump the like relationship failed: %v", err)
 					}
 				}
-				os.Exit(0)
-
+				return
 			default:
 				time.Sleep(time.Second * 5)
 			}
 		}
 	}()
 }
+
+var likeRelationshipDao *likeRelationship
 
 type likeRelationship struct {
 	_              [0]func()
@@ -106,7 +111,7 @@ type likeRelationship struct {
 func newLikeRelationshipDao() (res *likeRelationship) {
 	maxcount := viper.GetInt32("like.relationship.maxcount")
 	res = &likeRelationship{
-		cacheKeyPrefix: viper.GetString("like.relationship.cachekeyPrefix"),
+		cacheKeyPrefix: _lr.TableName(),
 		times:          make(map[uint]*int32),
 		maxcount:       maxcount,
 		mutex:          &sync.Mutex{},
@@ -153,28 +158,6 @@ func newLikeRelationshipDao() (res *likeRelationship) {
 		},
 	}
 	return
-}
-
-var likeRelationshipDao *likeRelationship
-
-func GetLikeRelationship() *likeRelationship {
-	return likeRelationshipDao
-}
-
-/*
-文章关注表
-*/
-type LikeRelationship struct {
-	ArticleID uint   `gorm:"primarykey"`
-	PublicKey string `gorm:"varchar(64);primarykey"`
-}
-
-func (lrs *LikeRelationship) MarshalBinary() ([]byte, error) {
-	return json.Marshal(lrs)
-}
-
-func (lrs *LikeRelationship) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, lrs)
 }
 
 func (l *likeRelationship) CreateLikeRelationship(ctx context.Context, likeRelationship *LikeRelationship) (err error) {
@@ -280,4 +263,24 @@ func (l *likeRelationship) FindLikeRelationshipByArticleIDAndUserid(ctx context.
 		exist = true
 	}
 	return
+}
+
+// should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
+var _lr = &LikeRelationship{}
+
+/*文章关注表*/
+type LikeRelationship struct {
+	ArticleID uint   `gorm:"primarykey"`
+	PublicKey string `gorm:"varchar(64);primarykey"`
+}
+
+func (lrs *LikeRelationship) TableName() string {
+	return "like_relationship"
+}
+func (lrs *LikeRelationship) MarshalBinary() ([]byte, error) {
+	return json.Marshal(lrs)
+}
+
+func (lrs *LikeRelationship) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, lrs)
 }
