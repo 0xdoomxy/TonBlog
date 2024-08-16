@@ -6,11 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 )
 
 func GetTagRelationship() *tagRelationship {
@@ -35,7 +33,13 @@ func (t *tagRelationship) CreateTagRelationship(ctx context.Context, tagRelation
 		logrus.Errorf("create tag relationship %v failed:%v", tagRelationship, err)
 		return
 	}
-
+	cache := db.GetRedis()
+	key := fmt.Sprintf("%s_%s", t.cacheKey, tagRelationship.Name)
+	ignoreErr := cache.SAdd(ctx, key, tagRelationship.ArticleId).Err()
+	if ignoreErr != nil && ignoreErr != redis.Nil {
+		defer cache.Del(ctx, key)
+		logrus.Errorf("add the tag relationship %v to redis failed:%s", tagRelationship, ignoreErr.Error())
+	}
 	return
 }
 
@@ -47,6 +51,24 @@ func (t *tagRelationship) BatchCreateTagRelationship(ctx context.Context, tagRel
 	err = db.GetMysql().WithContext(ctx).Model(&TagRelationship{}).Create(&tagRelationships).Error
 	if err != nil {
 		logrus.Errorf("batch create tag relationship %v failed:%v", tagRelationships, err)
+	}
+	cache := db.GetRedis()
+	var agg = make(map[string][]any)
+	for _, tagRelationship := range tagRelationships {
+		v, ok := agg[tagRelationship.Name]
+		if !ok {
+			v = make([]any, 0)
+			agg[tagRelationship.Name] = v
+		}
+		v = append(v, tagRelationship.ArticleId)
+	}
+	for k, v := range agg {
+		key := fmt.Sprintf("%s_%s", t.cacheKey, k)
+		ignoreErr := cache.SAdd(ctx, key, v).Err()
+		if ignoreErr != nil && ignoreErr != redis.Nil {
+			defer cache.Del(ctx, key)
+			logrus.Errorf("add the tag relationship %v to redis failed:%s", tagRelationships, ignoreErr.Error())
+		}
 	}
 	return
 }
@@ -113,10 +135,6 @@ func (t *tagRelationship) FindTagRelationshipByName(ctx context.Context, name st
 	}
 	err = db.GetMysql().WithContext(ctx).Model(&TagRelationship{}).Where("name = ?", name).Limit(pagesize).Offset(start).Scan(&view).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			cache.Set(ctx, key, "", time.Minute)
-			return
-		}
 		logrus.Errorf("find tag relationship %s failed:%v", name, err)
 		return
 	}
