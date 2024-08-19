@@ -1,8 +1,5 @@
-
-
-
-const Constants={
-    PageSize:15
+const Constants = {
+    PageSize: 15
 
 }
 

@@ -14,7 +14,6 @@ const payloadTTLMS = 1000 * 60 * 20;
         if (!isConnectionRestored || !SetAuthorizetion) {
             return;
         }
-
         clearInterval(interval.current);
 
         if (!wallet) {

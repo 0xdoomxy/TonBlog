@@ -13,7 +13,6 @@ function App() {
       <Routes>
       <Route path={'/'} Component={HomePage} />
       <Route path={'/about'} Component={AboutPage} />
-      {/* <Route path={'/archieve'} Component={ArchivesPage} /> */}
       <Route path={'/article/create'} Component={CreatePage}/> 
       <Route path={'/article/:articleId'} Component={ArticlePage} />
       <Route path={'/search'} Component={SearchPage}/>

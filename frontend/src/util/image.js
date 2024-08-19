@@ -1,13 +1,10 @@
-
-
-
 /**
  * 从一段 markdown 文本中匹配出图片的 url
- * @param {*} markdown 
- * @returns 
+ * @param {*} markdown
+ * @returns
  */
 function MatchImageUrlFromMarkdown(markdown) {
-    var imageRegex = /!\[.*\]\((.*)\)/g;
+    var imageRegex = /!\[.*]\((.*)\)/g;
     var matches = [];
     var match;
 
@@ -18,4 +15,4 @@ function MatchImageUrlFromMarkdown(markdown) {
     return matches;
 }
 
-export { MatchImageUrlFromMarkdown };
+export {MatchImageUrlFromMarkdown};
