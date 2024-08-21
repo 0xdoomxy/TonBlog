@@ -65,12 +65,13 @@ func (a *article) UploadImage(filename string, file multipart.File) error {
 *
 */
 func (a *article) DownloadImage(filename string) (res []byte, err error) {
-	var reader io.Reader
+	var reader io.ReadCloser
 	reader, err = db.GetBucket(imageBucketName).GetObject(filename)
 	if err != nil {
 		logrus.Error("get image from oss failed:", err.Error())
 		return nil, err
 	}
+	defer reader.Close()
 	res, err = io.ReadAll(reader)
 	if err != nil {
 		logrus.Error("read image from reader failed:", err.Error())
