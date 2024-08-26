@@ -7,6 +7,7 @@ import (
 	"context"
 	"io"
 	"mime/multipart"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,13 +30,20 @@ func init() {
 	if err != nil {
 		logrus.Panic("create hot article pool failed:", err.Error())
 	}
+	var regexpImage *regexp.Regexp
+	regexpImage, err = regexp.Compile("/!\\[.*]\\((.*)\\)/g")
+	if err != nil {
+		logrus.Panic("create  article regexp image  failed:", err.Error())
+	}
 	articleService = &article{
 		hotArticlePool: hotArticlePool,
+		matchImage:     regexpImage,
 	}
 }
 
 type article struct {
 	hotArticlePool *hotkey.HotKeyWithCache
+	matchImage     *regexp.Regexp
 }
 
 var articleService *article
@@ -87,13 +95,20 @@ func (a *article) DownloadImage(filename string) (res []byte, err error) {
 **/
 
 /*
-*
-
-	发布文章(标签需要切割)
-
-*
+发布文章(标签需要切割)
 */
-func (a *article) PublishArticle(ctx context.Context, article *dao.Article) (err error) {
+func (a *article) PublishArticle(ctx context.Context, article *dao.Article) (id uint, err error) {
+
+	//后端正则匹配来自于markdown文本的图片
+	var images [][]string
+	images = a.matchImage.FindAllStringSubmatch(article.Content, -1)
+	var realPictures = []string{}
+	for i := 0; i < len(images); i++ {
+		for j := 0; j < len(images[i]); j++ {
+			realPictures = append(realPictures, images[i][j])
+		}
+	}
+	article.Images = strings.Join(realPictures, ",")
 	//文章dao
 	articledao := dao.GetArticle()
 	//访问dao
@@ -101,10 +116,10 @@ func (a *article) PublishArticle(ctx context.Context, article *dao.Article) (err
 	//点赞dao
 	likedao := dao.GetLike()
 
-	err = articledao.CreateArticle(ctx, article)
+	id, err = articledao.CreateArticle(ctx, article)
 	if err != nil {
 		logrus.Errorf("create article %v failed: %s", article, err.Error())
-		return err
+		return
 	}
 	defer func() {
 		if err != nil {

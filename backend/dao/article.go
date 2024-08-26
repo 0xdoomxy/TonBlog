@@ -94,11 +94,12 @@ type article struct {
 
 var articleDao = &article{}
 
-func (a *article) CreateArticle(ctx context.Context, article *Article) (err error) {
+func (a *article) CreateArticle(ctx context.Context, article *Article) (id uint, err error) {
 	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Create(article).Error
 	if err != nil {
 		return
 	}
+	id = article.ID
 	abort := db.GetRedis().Set(ctx, fmt.Sprintf("%s_%d", a.cachekeyPrefix, article.ID), article, time.Millisecond*time.Duration(a.cachems)).Err()
 	if abort != nil {
 		logrus.Errorf("set article %v cache failed: %s", article, err.Error())

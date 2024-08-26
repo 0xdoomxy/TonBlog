@@ -43,7 +43,8 @@ func (a *article) PublishArticle(ctx *gin.Context) {
 	article.Content = form.Value["content"][0]
 	article.Images = form.Value["images"][0]
 	article.Tags = form.Value["tags"][0]
-	err = service.GetArticle().PublishArticle(ctx, article)
+	//todo: return the article id currently is useless
+	_, err = service.GetArticle().PublishArticle(ctx, article)
 	if err != nil {
 		ctx.JSON(200, utils.NewFailedResponse("发布失败"))
 		return
