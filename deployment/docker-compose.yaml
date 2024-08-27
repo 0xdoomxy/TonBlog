@@ -15,8 +15,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: ./backend/.dockerfile
-    image: blog_backend:latest
+      dockerfile: ./.dockerfile
     container_name: blog_backend
     restart: always
     expose: 
