@@ -5,6 +5,7 @@ import (
 	"blog/dao/db"
 	"blog/middleware/hotkey"
 	"context"
+	"errors"
 	"io"
 	"mime/multipart"
 	"regexp"
@@ -31,7 +32,7 @@ func init() {
 		logrus.Panic("create hot article pool failed:", err.Error())
 	}
 	var regexpImage *regexp.Regexp
-	regexpImage, err = regexp.Compile("/!\\[.*]\\((.*)\\)/g")
+	regexpImage, err = regexp.Compile(`!\[.*?\]\((.*?)\)`)
 	if err != nil {
 		logrus.Panic("create  article regexp image  failed:", err.Error())
 	}
@@ -104,9 +105,13 @@ func (a *article) PublishArticle(ctx context.Context, article *dao.Article) (id 
 	images = a.matchImage.FindAllStringSubmatch(article.Content, -1)
 	var realPictures = []string{}
 	for i := 0; i < len(images); i++ {
-		for j := 0; j < len(images[i]); j++ {
-			realPictures = append(realPictures, images[i][j])
+		if len(images[i]) < 2 {
+			logrus.Errorf("image regexp match failed:%s", article.Content)
+			err = errors.New("image regexp match failed")
+			return
 		}
+		realPictures = append(realPictures, images[i][1])
+
 	}
 	article.Images = strings.Join(realPictures, ",")
 	//文章dao

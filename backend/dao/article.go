@@ -284,10 +284,10 @@ var _a = &Article{}
 type Article struct {
 	gorm.Model
 	Title   string `gorm:"type:varchar(255);not null"`
-	Tags    string `gorm:"tags"`
+	Tags    string `gorm:"tags;varchar(300)"`
 	Creator string `gorm:"varchar(64);not null"`
 	Content string `gorm:"type:longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;not null"`
-	Images  string `gorm:"type:varchar(1000)"`
+	Images  string `gorm:"type:longtext"`
 }
 
 func (a *Article) TableName() string {
