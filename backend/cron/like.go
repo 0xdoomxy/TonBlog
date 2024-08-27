@@ -58,11 +58,7 @@ func (lcc *likeConsumerCron) Run() {
 				if err != nil {
 					return
 				}
-				defer func() {
-					if err == nil {
-						cache.Del(context.TODO(), key)
-					}
-				}()
+
 				articleidStr, found = strings.CutPrefix(key, fmt.Sprintf("%s_", dao.GetLikePreifxKey()))
 				if !found {
 					return
@@ -79,6 +75,8 @@ func (lcc *likeConsumerCron) Run() {
 						return
 					}
 					m[articleid] = likenum
+				} else if ok && old >= likenum {
+					cache.Del(context.TODO(), key)
 				}
 			}(k)
 		}
