@@ -32,9 +32,9 @@ const (
 	`
 	//在程序结束时候执行的脚本用来将redis里面的数据存储到mysql
 	finalizeScript = `
-	local members = redis.call('ZRANGE', KEYS[1], 0, -1)
-redis.call('DEL', KEYS[1])
-return members`
+		local members = redis.call('ZRANGE', KEYS[1], 0, -1)
+		redis.call('DEL', KEYS[1])
+		return members`
 )
 
 func GetLikeRelationship() *likeRelationship {
