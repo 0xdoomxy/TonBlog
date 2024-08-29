@@ -2,11 +2,13 @@ package dao
 
 import (
 	"blog/dao/db"
+	"blog/model"
 	"blog/utils/es"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"gorm.io/gorm"
 	"io"
 	"strconv"
 	"strings"
@@ -17,11 +19,10 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"gorm.io/gorm"
 )
 
 // elasticsearch schema
-const mapping = `{
+const article_es_mapping = `{
 			"settings": {
 				"number_of_shards": 3,
 				"number_of_replicas": 0,
@@ -58,7 +59,7 @@ func GetArticle() *article {
 
 func init() {
 	articleContentEsIndex := viper.GetString("article.contentsearchindex")
-	db.GetMysql().AutoMigrate(&Article{})
+	db.GetMysql().AutoMigrate(&model.Article{})
 	//init elasticsearch index and mapper
 	es := db.GetElasticsearch()
 	var err error
@@ -68,12 +69,12 @@ func init() {
 		logrus.Panic("check the index exist failed:", err.Error())
 	}
 	if resp.IsError() {
-		resp, err = es.Indices.Create(articleContentEsIndex, es.Indices.Create.WithBody(strings.NewReader(mapping)))
+		resp, err = es.Indices.Create(articleContentEsIndex, es.Indices.Create.WithBody(strings.NewReader(article_es_mapping)))
 		if err != nil {
-			logrus.Panicf("create the index %s mapper %s failed: %s", articleContentEsIndex, mapping, err.Error())
+			logrus.Panicf("create the index %s mapper %s failed: %s", articleContentEsIndex, article_es_mapping, err.Error())
 		}
 		if resp.IsError() {
-			logrus.Panicf("create the index %s mapper %s failed: %s", articleContentEsIndex, mapping, resp.String())
+			logrus.Panicf("create the index %s mapper %s failed: %s", articleContentEsIndex, article_es_mapping, resp.String())
 		}
 	}
 	articleDao.searchEngine = es
@@ -81,8 +82,6 @@ func init() {
 	articleDao.cachems = viper.GetInt64("cache.cleaninterval")
 	articleDao.cachekeyPrefix = _a.TableName()
 }
-
-var articleContentBucketName string
 
 type article struct {
 	_              [0]func()
@@ -94,8 +93,8 @@ type article struct {
 
 var articleDao = &article{}
 
-func (a *article) CreateArticle(ctx context.Context, article *Article) (id uint, err error) {
-	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Create(article).Error
+func (a *article) CreateArticle(ctx context.Context, article *model.Article) (id uint, err error) {
+	err = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Create(article).Error
 	if err != nil {
 		return
 	}
@@ -107,7 +106,7 @@ func (a *article) CreateArticle(ctx context.Context, article *Article) (id uint,
 	return
 }
 
-func (a *article) UpdateArticle(ctx context.Context, article *Article) (err error) {
+func (a *article) UpdateArticle(ctx context.Context, article *model.Article) (err error) {
 	cache := db.GetRedis()
 	key := fmt.Sprintf("%s_%d", a.cachekeyPrefix, article.ID)
 	err = cache.Del(ctx, key).Err()
@@ -115,8 +114,11 @@ func (a *article) UpdateArticle(ctx context.Context, article *Article) (err erro
 		logrus.Errorf("to update article,delete article from redis failed:%s", err.Error())
 		return
 	}
-	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Where("id = ?", article.ID).Updates(article).Error
+	err = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Where("id = ?", article.ID).Updates(article).Error
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			cache.Set(ctx, key, nil, time.Millisecond*time.Duration(a.cachems))
+		}
 		logrus.Errorf("update article %v from mysql failed:%s", article, err.Error())
 		return
 	}
@@ -129,28 +131,32 @@ func (a *article) DeleteArticle(ctx context.Context, id uint) (err error) {
 		logrus.Errorf("delete the article %d cache failed: %s", id, err.Error())
 		return
 	}
-	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Where("id = ?", id).Delete(&Article{}).Error
+	err = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Where("id = ?", id).Delete(&model.Article{}).Error
 	if err != nil {
-		return
+		logrus.Errorf("delete the article %d  failed: %s", id, err.Error())
 	}
 	return
 }
-func (a *article) FindArticlePaticalById(ctx context.Context, id uint) (article Article, err error) {
+func (a *article) FindArticlePaticalById(ctx context.Context, id uint) (article model.Article, err error) {
 	cache := db.GetRedis()
-	err = cache.Get(ctx, fmt.Sprintf("%s_%d", a.cachekeyPrefix, id)).Scan(&article)
+	key := fmt.Sprintf("%s_%d", a.cachekeyPrefix, id)
+	err = cache.Get(ctx, key).Scan(&article)
 	if err != redis.Nil {
 		if err != nil {
 			logrus.Errorf("find article %d from redis failed:%s", id, err.Error())
 		}
 		return
 	}
-	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Select("id, title, creator, tags,created_at,images").Where("id = ?", id).First(&article).Error
+	err = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Select("id, title, creator, tags,created_at,images,is_repost,repost_url").Where("id = ?", id).First(&article).Error
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			cache.Set(ctx, key, nil, time.Millisecond*time.Duration(a.cachems))
+		}
 		logrus.Errorf("find aritcle partical %d from mysql failed:%s", id, err.Error())
 	}
 	return
 }
-func (a *article) FindArticleById(ctx context.Context, id uint) (article Article, err error) {
+func (a *article) FindArticleById(ctx context.Context, id uint) (article model.Article, err error) {
 	cache := db.GetRedis()
 	key := fmt.Sprintf("%s_%d", a.cachekeyPrefix, id)
 	err = cache.Get(ctx, key).Scan(&article)
@@ -160,12 +166,15 @@ func (a *article) FindArticleById(ctx context.Context, id uint) (article Article
 		}
 		return
 	}
-	err = db.GetMysql().WithContext(ctx).Model(&Article{}).Where("id = ?", id).First(&article).Error
+	err = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Where("id = ?", id).First(&article).Error
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			cache.Set(ctx, key, nil, time.Millisecond*time.Duration(a.cachems))
+		}
 		logrus.Errorf("get article %d from mysql failed: %s", id, err.Error())
 		return
 	}
-	ignoreErr := cache.Set(ctx, key, &article, 30*time.Minute).Err()
+	ignoreErr := cache.Set(ctx, key, &article, time.Millisecond*time.Duration(a.cachems)).Err()
 	if ignoreErr != nil {
 		logrus.Errorf("set article %d cache failed: %s", id, ignoreErr.Error())
 	}
@@ -179,7 +188,7 @@ func (a *article) FindArticleById(ctx context.Context, id uint) (article Article
 *
 */
 
-func (a *article) BuildArticleSearch(ctx context.Context, article *Article) (err error) {
+func (a *article) BuildArticleSearch(ctx context.Context, article *model.Article) (err error) {
 	req := esapi.CreateRequest{
 		Index:      a.esIndex,
 		DocumentID: strconv.Itoa(int(article.ID)),
@@ -264,13 +273,13 @@ func (a *article) SearchArticleByPage(ctx context.Context, keyword string, page,
 	return
 }
 
-func (a *article) FindArticlePaticalByCreateTime(ctx context.Context, page, size int) (articles []*Article, total int64, err error) {
+func (a *article) FindArticlePaticalByCreateTime(ctx context.Context, page, size int) (articles []*model.Article, total int64, err error) {
 	storage := db.GetMysql()
-	err = storage.WithContext(ctx).Model(&Article{}).Count(&total).Error
+	err = storage.WithContext(ctx).Model(&model.Article{}).Count(&total).Error
 	if err != nil {
 		return
 	}
-	err = storage.WithContext(ctx).Model(&Article{}).Select("id, title, creator, tags,created_at,images").Order("created_at desc").Offset((page - 1) * size).Limit(size).Find(&articles).Error
+	err = storage.WithContext(ctx).Model(&model.Article{}).Select("id, title, creator, tags,created_at,images,is_repost,repost_url").Order("created_at desc").Offset((page - 1) * size).Limit(size).Find(&articles).Error
 	if err != nil {
 		return
 	}
@@ -278,25 +287,4 @@ func (a *article) FindArticlePaticalByCreateTime(ctx context.Context, page, size
 }
 
 // should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
-var _a = &Article{}
-
-/*文章表*/
-type Article struct {
-	gorm.Model
-	Title   string `gorm:"type:varchar(255);not null"`
-	Tags    string `gorm:"tags;varchar(300)"`
-	Creator string `gorm:"varchar(64);not null"`
-	Content string `gorm:"type:longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;not null"`
-	Images  string `gorm:"type:longtext"`
-}
-
-func (a *Article) TableName() string {
-	return "article"
-}
-func (a *Article) MarshalBinary() ([]byte, error) {
-	return json.Marshal(a)
-}
-
-func (a *Article) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, a)
-}
+var _a = &model.Article{}

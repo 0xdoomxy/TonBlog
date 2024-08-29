@@ -2,6 +2,7 @@ package dao
 
 import (
 	"blog/dao/db"
+	"blog/model"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -32,8 +33,8 @@ func newTagDao() *tag {
 	}
 }
 
-func (t *tag) CreateTag(ctx context.Context, tag *Tag) (err error) {
-	err = db.GetMysql().Model(&Tag{}).WithContext(ctx).Create(tag).Error
+func (t *tag) CreateTag(ctx context.Context, tag *model.Tag) (err error) {
+	err = db.GetMysql().Model(&model.Tag{}).WithContext(ctx).Create(tag).Error
 	if err != nil {
 		return
 	}
@@ -44,7 +45,7 @@ func (t *tag) CreateTag(ctx context.Context, tag *Tag) (err error) {
 	return
 }
 
-func (t *tag) FindTag(ctx context.Context, name string) (tag Tag, err error) {
+func (t *tag) FindTag(ctx context.Context, name string) (tag model.Tag, err error) {
 	cache := db.GetRedis()
 	key := fmt.Sprintf("%s_%s", t.cachekey, name)
 	err = cache.Get(ctx, key).Scan(&tag)
@@ -54,7 +55,7 @@ func (t *tag) FindTag(ctx context.Context, name string) (tag Tag, err error) {
 		}
 		return
 	}
-	err = db.GetMysql().Model(&Tag{}).WithContext(ctx).Where("name = ?", name).First(&tag).Error
+	err = db.GetMysql().Model(&model.Tag{}).WithContext(ctx).Where("name = ?", name).First(&tag).Error
 	if err != nil {
 		logrus.Errorf("get tag %s from mysql failed:%s", name, err.Error())
 		return
@@ -71,7 +72,7 @@ func (t *tag) DeleteTag(ctx context.Context, name string) (err error) {
 		logrus.Errorf("delete tag %s from redis failed:%s", name, err.Error())
 		return
 	}
-	err = db.GetMysql().Model(&Tag{}).WithContext(ctx).Where("name = ?", name).Delete(&Tag{}).Error
+	err = db.GetMysql().Model(&model.Tag{}).WithContext(ctx).Where("name = ?", name).Delete(&model.Tag{}).Error
 	return
 }
 
@@ -81,7 +82,7 @@ func (t *tag) FindAndIncrementTagNumByName(ctx context.Context, name string, num
 	cache := db.GetRedis()
 	defer func() {
 		if needCreate {
-			err = db.GetMysql().Model(&Tag{}).Create(&Tag{Name: name, ArticleNum: num}).Error
+			err = db.GetMysql().Model(&model.Tag{}).Create(&model.Tag{Name: name, ArticleNum: num}).Error
 			if err != nil {
 				logrus.Errorf("create the tag (name:%s) failed:%s", name, err.Error())
 				return
@@ -98,7 +99,7 @@ func (t *tag) FindAndIncrementTagNumByName(ctx context.Context, name string, num
 		logrus.Errorf("delete tag %s from redis failed:%s", name, err.Error())
 		return
 	}
-	result := db.GetMysql().WithContext(ctx).Model(&Tag{}).Where("name = ?", name).Update("article_num", gorm.Expr("article_num + ?", num))
+	result := db.GetMysql().WithContext(ctx).Model(&model.Tag{}).Where("name = ?", name).Update("article_num", gorm.Expr("article_num + ?", num))
 	if result.Error != nil {
 		return result.Error
 	}
@@ -116,7 +117,7 @@ func (t *tag) FindAllTags(ctx context.Context) (tags Tags, err error) {
 		}
 		return
 	}
-	err = db.GetMysql().Model(&Tag{}).WithContext(ctx).Find(&tags).Error
+	err = db.GetMysql().Model(&model.Tag{}).WithContext(ctx).Find(&tags).Error
 	if err != nil {
 		logrus.Errorf("get all tags from  mysql:%s", err.Error())
 		return
@@ -128,7 +129,7 @@ func (t *tag) FindAllTags(ctx context.Context) (tags Tags, err error) {
 	return
 }
 
-type Tags []*Tag
+type Tags []*model.Tag
 
 func (tags *Tags) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, tags)
@@ -138,26 +139,8 @@ func (tags *Tags) MarshalBinary() ([]byte, error) {
 }
 
 func init() {
-	db.GetMysql().AutoMigrate(&Tag{})
+	db.GetMysql().AutoMigrate(&model.Tag{})
 }
 
 // should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
-var _t = &Tag{}
-
-/*标签表*/
-type Tag struct {
-	Name       string `gorm:"type:varchar(255);primaryKey"`
-	ArticleNum uint   `gorm:"not null"`
-}
-
-func (tag *Tag) TableName() string {
-	return "tag"
-}
-
-func (tag *Tag) MarshalBinary() ([]byte, error) {
-	return json.Marshal(tag)
-}
-
-func (tag *Tag) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, tag)
-}
+var _t = &model.Tag{}

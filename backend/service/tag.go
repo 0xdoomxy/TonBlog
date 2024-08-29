@@ -2,6 +2,7 @@ package service
 
 import (
 	"blog/dao"
+	"blog/model"
 	"context"
 	"sync"
 
@@ -24,16 +25,16 @@ func (t *tag) GetTags(ctx context.Context) (view TagsView, err error) {
 	tags, err = dao.GetTag().FindAllTags(ctx)
 	return TagsView(tags), err
 }
-func (t *tag) CreateTag(ctx context.Context, tag *dao.Tag) (err error) {
+func (t *tag) CreateTag(ctx context.Context, tag *model.Tag) (err error) {
 	err = dao.GetTag().CreateTag(ctx, tag)
 	return
 }
 
-func (t *tag) CreateTagRelationship(ctx context.Context, tagRelationship *dao.TagRelationship) (err error) {
+func (t *tag) CreateTagRelationship(ctx context.Context, tagRelationship *model.TagRelationship) (err error) {
 	err = dao.GetTagRelationship().CreateTagRelationship(ctx, tagRelationship)
 	return
 }
-func (t *tag) DeleteTagRelationship(ctx context.Context, tagRelationship *dao.TagRelationship) (err error) {
+func (t *tag) DeleteTagRelationship(ctx context.Context, tagRelationship *model.TagRelationship) (err error) {
 	err = dao.GetTagRelationship().DeleteTagRelationship(ctx, tagRelationship)
 	return
 }
@@ -65,7 +66,7 @@ func (t *tag) IncrementArticleNumByNames(ctx context.Context, names []string, nu
 	return
 }
 func (t *tag) GetArticleTotalByName(ctx context.Context, name string) (total uint, err error) {
-	var rsv dao.Tag
+	var rsv model.Tag
 	rsv, err = dao.GetTag().FindTag(ctx, name)
 	if err != nil {
 		logrus.Errorf("find tag by name (%s) failed: %s", name, err.Error())

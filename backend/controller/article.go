@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"blog/dao"
+	"blog/model"
 	"blog/service"
 	"blog/utils"
 	"fmt"
@@ -36,7 +36,7 @@ func (a *article) PublishArticle(ctx *gin.Context) {
 		ctx.JSON(200, utils.NewFailedResponse("参数错误"))
 		return
 	}
-	var article = &dao.Article{}
+	var article = &model.Article{}
 	//添加userid 到articleMap中,必须确保articleMap中没有userid字段
 	article.Creator = publickey.(string)
 	article.Title = form.Value["title"][0]

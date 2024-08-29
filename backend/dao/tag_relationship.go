@@ -2,6 +2,7 @@ package dao
 
 import (
 	"blog/dao/db"
+	"blog/model"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -27,8 +28,8 @@ func newTagRelationshipDao() *tagRelationship {
 	}
 }
 
-func (t *tagRelationship) CreateTagRelationship(ctx context.Context, tagRelationship *TagRelationship) (err error) {
-	err = db.GetMysql().WithContext(ctx).Model(&TagRelationship{}).Create(tagRelationship).Error
+func (t *tagRelationship) CreateTagRelationship(ctx context.Context, tagRelationship *model.TagRelationship) (err error) {
+	err = db.GetMysql().WithContext(ctx).Model(&model.TagRelationship{}).Create(tagRelationship).Error
 	if err != nil {
 		logrus.Errorf("create tag relationship %v failed:%v", tagRelationship, err)
 		return
@@ -47,8 +48,8 @@ func (t *tagRelationship) CreateTagRelationship(ctx context.Context, tagRelation
 *
 批量创建 tag -article 关系
 */
-func (t *tagRelationship) BatchCreateTagRelationship(ctx context.Context, tagRelationships []*TagRelationship) (err error) {
-	err = db.GetMysql().WithContext(ctx).Model(&TagRelationship{}).Create(&tagRelationships).Error
+func (t *tagRelationship) BatchCreateTagRelationship(ctx context.Context, tagRelationships []*model.TagRelationship) (err error) {
+	err = db.GetMysql().WithContext(ctx).Model(&model.TagRelationship{}).Create(&tagRelationships).Error
 	if err != nil {
 		logrus.Errorf("batch create tag relationship %v failed:%v", tagRelationships, err)
 	}
@@ -77,8 +78,8 @@ func (t *tagRelationship) BatchCreateTagRelationship(ctx context.Context, tagRel
 *
 批量删除 tag -article 关系
 */
-func (t *tagRelationship) BatchDeleteTagRelationship(ctx context.Context, tagRelationships []*TagRelationship) (err error) {
-	err = db.GetMysql().WithContext(ctx).Model(&TagRelationship{}).Delete(&tagRelationships).Error
+func (t *tagRelationship) BatchDeleteTagRelationship(ctx context.Context, tagRelationships []*model.TagRelationship) (err error) {
+	err = db.GetMysql().WithContext(ctx).Model(&model.TagRelationship{}).Delete(&tagRelationships).Error
 	if err != nil {
 		logrus.Errorf("batch delete tag relationship %v failed:%v", tagRelationships, err)
 	}
@@ -126,14 +127,14 @@ func (t *tagRelationship) FindTagRelationshipByName(ctx context.Context, name st
 				logrus.Errorf("convert the articleid %s failed:%v", articleStr, err)
 				return
 			}
-			view = append(view, &TagRelationship{
+			view = append(view, &model.TagRelationship{
 				Name:      name,
 				ArticleId: uint(articleid),
 			})
 		}
 		return
 	}
-	err = db.GetMysql().WithContext(ctx).Model(&TagRelationship{}).Where("name = ?", name).Limit(pagesize).Offset(start).Scan(&view).Error
+	err = db.GetMysql().WithContext(ctx).Model(&model.TagRelationship{}).Where("name = ?", name).Limit(pagesize).Offset(start).Scan(&view).Error
 	if err != nil {
 		logrus.Errorf("find tag relationship %s failed:%v", name, err)
 		return
@@ -148,7 +149,7 @@ func (t *tagRelationship) FindTagRelationshipByName(ctx context.Context, name st
 	}
 	return
 }
-func (t *tagRelationship) DeleteTagRelationship(ctx context.Context, tagRelationship *TagRelationship) (err error) {
+func (t *tagRelationship) DeleteTagRelationship(ctx context.Context, tagRelationship *model.TagRelationship) (err error) {
 	cache := db.GetRedis()
 	key := fmt.Sprintf("%s_%s", t.cacheKey, tagRelationship.Name)
 	err = cache.SRem(ctx, key, tagRelationship.ArticleId).Err()
@@ -156,11 +157,11 @@ func (t *tagRelationship) DeleteTagRelationship(ctx context.Context, tagRelation
 		logrus.Errorf("delete the tag relationship %v failed:%s", tagRelationship, err.Error())
 		return
 	}
-	err = db.GetMysql().WithContext(ctx).Model(&TagRelationship{}).Where("name = ? and article_id = ?", tagRelationship.Name, tagRelationship.ArticleId).Delete(&TagRelationship{}).Error
+	err = db.GetMysql().WithContext(ctx).Model(&model.TagRelationship{}).Where("name = ? and article_id = ?", tagRelationship.Name, tagRelationship.ArticleId).Delete(&model.TagRelationship{}).Error
 	return
 }
 
-type TagRelationships []*TagRelationship
+type TagRelationships []*model.TagRelationship
 
 func (trs *TagRelationships) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, trs)
@@ -170,25 +171,8 @@ func (trs *TagRelationships) MarshalBinary() ([]byte, error) {
 }
 
 func init() {
-	db.GetMysql().AutoMigrate(&TagRelationship{})
+	db.GetMysql().AutoMigrate(&model.TagRelationship{})
 }
 
 // should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
-var _tr = &TagRelationship{}
-
-/*标签关系表*/
-type TagRelationship struct {
-	Name      string `gorm:"type:varchar(255);primary_key"`
-	ArticleId uint   `gorm:"type:int;primary_key"`
-}
-
-func (tr *TagRelationship) TableName() string {
-	return "tag_relationship"
-}
-
-func (tr *TagRelationship) MarshalBinary() ([]byte, error) {
-	return json.Marshal(tr)
-}
-func (tr *TagRelationship) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, tr)
-}
+var _tr = &model.TagRelationship{}

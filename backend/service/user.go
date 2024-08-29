@@ -3,6 +3,7 @@ package service
 import (
 	"blog/dao"
 	"blog/middleware/hotkey"
+	"blog/model"
 	"context"
 
 	"github.com/sirupsen/logrus"
@@ -45,7 +46,7 @@ func (u *user) AutoCreateIfNotExist(ctx context.Context, address string, alias s
 		return nil
 	}
 	userdao := dao.GetUser()
-	var user dao.User
+	var user model.User
 	defer func() {
 		if err == nil {
 			u.cache.Add(address, 1)
@@ -57,7 +58,7 @@ func (u *user) AutoCreateIfNotExist(ctx context.Context, address string, alias s
 			logrus.Errorf("find user %v failed: %s", address, err.Error())
 			return
 		} else {
-			err = userdao.CreateUser(&dao.User{
+			err = userdao.CreateUser(&model.User{
 				Address: address,
 				Alias:   alias,
 			})
@@ -71,12 +72,12 @@ func (u *user) AutoCreateIfNotExist(ctx context.Context, address string, alias s
 	return
 }
 
-func (u *user) FindUserByAddress(ctx context.Context, address string) (view *dao.User, err error) {
+func (u *user) FindUserByAddress(ctx context.Context, address string) (view *model.User, err error) {
 	if userany, ok := u.cache.Get(address); ok {
-		view = userany.(*dao.User)
+		view = userany.(*model.User)
 		return
 	}
-	var user dao.User
+	var user model.User
 	user, err = dao.GetUser().FindUserByAddress(ctx, address)
 	if err != nil {
 		logrus.Errorf("find user %v failed: %s", address, err.Error())

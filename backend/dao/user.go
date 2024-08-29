@@ -2,8 +2,8 @@ package dao
 
 import (
 	"blog/dao/db"
+	"blog/model"
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -28,15 +28,15 @@ func newUserDao() *user {
 	}
 }
 
-func (u *user) CreateUser(user *User) (err error) {
-	err = db.GetMysql().Model(&User{}).Create(user).Error
+func (u *user) CreateUser(user *model.User) (err error) {
+	err = db.GetMysql().Model(&model.User{}).Create(user).Error
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (u *user) FindUserByAddress(ctx context.Context, address string) (user User, err error) {
+func (u *user) FindUserByAddress(ctx context.Context, address string) (user model.User, err error) {
 	cache := db.GetRedis()
 	key := fmt.Sprintf("%s_%s", u.cachekey, address)
 	err = cache.Get(ctx, key).Scan(&user)
@@ -46,7 +46,7 @@ func (u *user) FindUserByAddress(ctx context.Context, address string) (user User
 		}
 		return
 	}
-	err = db.GetMysql().Model(&User{}).Where("address = ?", address).First(&user).Error
+	err = db.GetMysql().Model(&model.User{}).Where("address = ?", address).First(&user).Error
 	if err != nil {
 		logrus.Errorf("find user %v failed from mysql:%s", address, err.Error())
 		return
@@ -65,14 +65,14 @@ func (u *user) DeleteUser(ctx context.Context, address string) (err error) {
 		logrus.Errorf("delete user %v from redis failed:%s", address, err.Error())
 		return
 	}
-	err = db.GetMysql().Model(&User{}).Where("address = ?", address).Delete(&User{}).Error
+	err = db.GetMysql().Model(&model.User{}).Where("address = ?", address).Delete(&model.User{}).Error
 	if err != nil {
 		logrus.Errorf("delete user %v failed from mysql:%s", address, err.Error())
 	}
 	return
 }
 
-func (u *user) UpdateUser(ctx context.Context, user *User) (err error) {
+func (u *user) UpdateUser(ctx context.Context, user *model.User) (err error) {
 	cache := db.GetRedis()
 	key := fmt.Sprintf("%s_%s", u.cachekey, user.Address)
 	err = cache.Del(ctx, key).Err()
@@ -80,7 +80,7 @@ func (u *user) UpdateUser(ctx context.Context, user *User) (err error) {
 		logrus.Errorf("to update user, delete user from redis failed:%s", err.Error())
 		return
 	}
-	err = db.GetMysql().Model(&User{}).Where("address = ?", user.Address).Updates(user).Error
+	err = db.GetMysql().Model(&model.User{}).Where("address = ?", user.Address).Updates(user).Error
 	if err != nil {
 		logrus.Errorf("update the user %v failed:%s", user, err.Error())
 	}
@@ -88,29 +88,8 @@ func (u *user) UpdateUser(ctx context.Context, user *User) (err error) {
 }
 
 func init() {
-	db.GetMysql().AutoMigrate(&User{})
+	db.GetMysql().AutoMigrate(&model.User{})
 }
 
 // should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
-var _u = &User{}
-
-/*用户表*/
-type User struct {
-	Address   string `gorm:"type:varchar(64);primary_key"`
-	Alias     string `gorm:"type:varchar(255);not null"`
-	CreatedAt time.Time
-	//TODO we should pass this field to notify the user who starts up the subscribe function  the new message is arriving
-	//TgAccount string `gorm:"type:varchar(255);not null"`
-}
-
-func (user *User) TableName() string {
-	return "user"
-}
-
-func (user *User) MarshalBinary() ([]byte, error) {
-	return json.Marshal(user)
-}
-
-func (user *User) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, user)
-}
+var _u = &model.User{}

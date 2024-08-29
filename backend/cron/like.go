@@ -3,6 +3,7 @@ package cron
 import (
 	"blog/dao"
 	"blog/dao/db"
+	"blog/model"
 	"context"
 	"fmt"
 	"strconv"
@@ -69,7 +70,7 @@ func (lcc *likeConsumerCron) Run() {
 					return
 				}
 				if old, ok := m[articleid]; !ok || (ok && old < likenum) {
-					err = db.GetMysql().Model(&dao.Like{}).Where("article_id = ?", articleid).Update("like_num", likenum).Error
+					err = db.GetMysql().Model(&model.Like{}).Where("article_id = ?", articleid).Update("like_num", likenum).Error
 					if err != nil {
 						logrus.Errorf("update like num (articleid:%d,likenum:%d) failed: %s", articleid, likenum, err.Error())
 						return

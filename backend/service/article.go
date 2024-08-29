@@ -4,6 +4,7 @@ import (
 	"blog/dao"
 	"blog/dao/db"
 	"blog/middleware/hotkey"
+	"blog/model"
 	"context"
 	"errors"
 	"io"
@@ -98,7 +99,7 @@ func (a *article) DownloadImage(filename string) (res []byte, err error) {
 /*
 发布文章(标签需要切割)
 */
-func (a *article) PublishArticle(ctx context.Context, article *dao.Article) (id uint, err error) {
+func (a *article) PublishArticle(ctx context.Context, article *model.Article) (id uint, err error) {
 
 	//后端正则匹配来自于markdown文本的图片
 	var images [][]string
@@ -140,7 +141,7 @@ func (a *article) PublishArticle(ctx context.Context, article *dao.Article) (id 
 		return
 	}
 	//创建所对应的点赞数
-	err = likedao.CreateLike(ctx, &dao.Like{ArticleID: article.ID, LikeNum: 0})
+	err = likedao.CreateLike(ctx, &model.Like{ArticleID: article.ID, LikeNum: 0})
 	if err != nil {
 		logrus.Errorf("article (%v) create like failed: %s", article, err.Error())
 		return
@@ -151,7 +152,7 @@ func (a *article) PublishArticle(ctx context.Context, article *dao.Article) (id 
 		}
 	}()
 	//创建所对应的访问数
-	err = accessdao.CreateAccess(ctx, &dao.Access{ArticleID: article.ID, AccessNum: 0})
+	err = accessdao.CreateAccess(ctx, &model.Access{ArticleID: article.ID, AccessNum: 0})
 	if err != nil {
 		logrus.Errorf("article (%v) create access failed: %s", article, err.Error())
 		return
@@ -183,11 +184,11 @@ func (a *article) PublishArticle(ctx context.Context, article *dao.Article) (id 
 }
 
 // 没有切分的tags 和 articleid进行组装生成[]*tag_relationship
-func assembleTagRelationship(tags string, articleId uint) []*dao.TagRelationship {
+func assembleTagRelationship(tags string, articleId uint) []*model.TagRelationship {
 	tagNames := strings.Split(tags, ",")
-	tagRelationships := make([]*dao.TagRelationship, len(tagNames))
+	tagRelationships := make([]*model.TagRelationship, len(tagNames))
 	for i, tagName := range tagNames {
-		tagRelationships[i] = &dao.TagRelationship{
+		tagRelationships[i] = &model.TagRelationship{
 			Name:      tagName,
 			ArticleId: articleId,
 		}
@@ -271,24 +272,24 @@ func (a *article) FindArticle(ctx context.Context, articleid uint) (view *Articl
 	articledao := dao.GetArticle()
 	likedao := dao.GetLike()
 	userService := GetUser()
-	var article dao.Article
+	var article model.Article
 	article, err = articledao.FindArticleById(ctx, articleid)
 	if err != nil {
 		logrus.Errorf("find article by id %d failed: %s", articleid, err.Error())
 		return
 	}
-	var user *dao.User
+	var user *model.User
 	user, err = userService.FindUserByAddress(ctx, article.Creator)
 	if err != nil {
 		logrus.Errorf("find user by id %s failed: %s", article.Creator, err.Error())
 		return
 	}
-	var access dao.Access
+	var access model.Access
 	access, err = accessdao.FindAccessById(ctx, articleid)
 	if err != nil {
 		logrus.Errorf("find access by id %d failed: %s", articleid, err.Error())
 	}
-	var like dao.Like
+	var like model.Like
 	like, err = likedao.FindLikeById(ctx, articleid)
 	if err != nil {
 		logrus.Errorf("find like by id %d failed: %s", articleid, err.Error())
@@ -336,25 +337,25 @@ func (a *article) FindArticlePatical(ctx context.Context, articleid uint) (view 
 	accessdao := dao.GetAccess()
 	likedao := dao.GetLike()
 	userService := GetUser()
-	var article dao.Article
+	var article model.Article
 	article, err = articledao.FindArticlePaticalById(ctx, articleid)
 	if err != nil {
 		logrus.Errorf("find article by id %d failed: %s", articleid, err.Error())
 		return
 	}
-	var access dao.Access
+	var access model.Access
 	access, err = accessdao.FindAccessById(ctx, articleid)
 	if err != nil {
 		logrus.Errorf("find access by id %d failed: %s", articleid, err.Error())
 		return
 	}
-	var like dao.Like
+	var like model.Like
 	like, err = likedao.FindLikeById(ctx, articleid)
 	if err != nil {
 		logrus.Errorf("find like by id %d failed: %s", articleid, err.Error())
 		return
 	}
-	var user *dao.User
+	var user *model.User
 	user, err = userService.FindUserByAddress(ctx, article.Creator)
 	if err != nil {
 		logrus.Errorf("find user by id %s failed: %s", article.Creator, err.Error())
@@ -426,7 +427,7 @@ func (a *article) FindArticleByAccessNum(ctx context.Context, page int, pagesize
 	accessdao := dao.GetAccess()
 	likedao := dao.GetLike()
 	var total int64
-	var access []*dao.Access
+	var access []*model.Access
 	access, total, err = accessdao.FindMaxAccessByPage(ctx, page, pagesize)
 	if err != nil {
 		logrus.Errorf("find article by access num failed: %s", err.Error())
@@ -459,7 +460,7 @@ func (a *article) FindArticleByAccessNum(ctx context.Context, page int, pagesize
 				})
 				return
 			}
-			var likeView dao.Like
+			var likeView model.Like
 			likeView, tmpError = likedao.FindLikeById(ctx, articles[index].ID)
 			if tmpError != nil {
 				logrus.Errorf("find like by id %d failed: %s", articles[index].ID, tmpError.Error())
@@ -492,7 +493,7 @@ func (a *article) FindArticleByAccessNum(ctx context.Context, page int, pagesize
 func (a *article) FindArticlePaticalByCreateTime(ctx context.Context, page int, pagesize int) (view *ArticleViewByPage, err error) {
 	var accessDao = dao.GetAccess()
 	var likeDao = dao.GetLike()
-	var result []*dao.Article
+	var result []*model.Article
 	var total int64
 	result, total, err = dao.GetArticle().FindArticlePaticalByCreateTime(ctx, page, pagesize)
 	if err != nil {
@@ -500,7 +501,7 @@ func (a *article) FindArticlePaticalByCreateTime(ctx context.Context, page int, 
 		return
 	}
 	var userService = GetUser()
-	var user *dao.User
+	var user *model.User
 	articleViews := make([]*ArticleView, len(result))
 	for i := 0; i < len(articleViews); i++ {
 		user, err = userService.FindUserByAddress(ctx, result[i].Creator)

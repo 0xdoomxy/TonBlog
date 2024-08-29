@@ -2,15 +2,13 @@ package dao
 
 import (
 	"blog/dao/db"
+	"blog/model"
 	"context"
-	"encoding/json"
 	"fmt"
-	"strconv"
-	"time"
-
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+	"strconv"
 )
 
 func GetComment() *comment {
@@ -18,7 +16,7 @@ func GetComment() *comment {
 }
 
 func init() {
-	db.GetMysql().AutoMigrate(&Comment{})
+	db.GetMysql().AutoMigrate(&model.Comment{})
 	commentDao = newCommentDao()
 }
 
@@ -35,8 +33,8 @@ func newCommentDao() *comment {
 	}
 }
 
-func (c *comment) CreateComment(ctx context.Context, comment *Comment) (err error) {
-	err = db.GetMysql().WithContext(ctx).Model(&Comment{}).Create(comment).Error
+func (c *comment) CreateComment(ctx context.Context, comment *model.Comment) (err error) {
+	err = db.GetMysql().WithContext(ctx).Model(&model.Comment{}).Create(comment).Error
 	if err != nil {
 		logrus.Errorf("create the comment failed: %v", err)
 		return
@@ -50,7 +48,7 @@ func (c *comment) CreateComment(ctx context.Context, comment *Comment) (err erro
 }
 
 func (c *comment) FindCommentCreateBy(ctx context.Context, id uint, creator string) (ok bool, err error) {
-	err = db.GetMysql().WithContext(ctx).Model(&Comment{}).Where("article_id = ? and creator = ?", id, creator).First(&Comment{}).Error
+	err = db.GetMysql().WithContext(ctx).Model(&model.Comment{}).Where("article_id = ? and creator = ?", id, creator).First(&model.Comment{}).Error
 	if err != nil {
 		if err != gorm.ErrRecordNotFound {
 			logrus.Errorf("find the comment by id %d and creator %s failed: %v", id, creator, err)
@@ -69,7 +67,7 @@ func (c *comment) DeleteComment(ctx context.Context, articleid uint, id uint) (e
 		logrus.Errorf("delete the comment cache by articleid %d failed: %v", articleid, err)
 		return
 	}
-	err = db.GetMysql().WithContext(ctx).Model(&Comment{}).Where("id = ?", id).Delete(&Comment{}).Error
+	err = db.GetMysql().WithContext(ctx).Model(&model.Comment{}).Where("id = ?", id).Delete(&model.Comment{}).Error
 	if err != nil {
 		logrus.Errorf("delete the comment by id %d  failed: %v", id, err)
 	}
@@ -83,14 +81,14 @@ func (c *comment) DeleteCommentByArticle(ctx context.Context, articleid uint) (e
 		logrus.Errorf("delete the comment cache by articleid %d failed: %v", articleid, err)
 		return
 	}
-	err = db.GetMysql().WithContext(ctx).Model(&Comment{}).Where("article_id = ?", articleid).Delete(&Comment{}).Error
+	err = db.GetMysql().WithContext(ctx).Model(&model.Comment{}).Where("article_id = ?", articleid).Delete(&model.Comment{}).Error
 	if err != nil {
 		logrus.Errorf("delete the comment by articleid %d failed: %v", articleid, err)
 	}
 	return
 }
 
-func (c *comment) FindCommentByArticleid(ctx context.Context, articleid uint) (view []*Comment, err error) {
+func (c *comment) FindCommentByArticleid(ctx context.Context, articleid uint) (view []*model.Comment, err error) {
 	cache := db.GetRedis()
 	if cache.Exists(ctx, fmt.Sprintf("%s_%d", c.cachekey, articleid)).Val() > 0 {
 		err = cache.HVals(ctx, fmt.Sprintf("%s_%d", c.cachekey, articleid)).ScanSlice(&view)
@@ -99,7 +97,7 @@ func (c *comment) FindCommentByArticleid(ctx context.Context, articleid uint) (v
 		}
 		return
 	}
-	err = db.GetMysql().WithContext(ctx).Model(&Comment{}).Where("article_id = ?", articleid).Find(&view).Error
+	err = db.GetMysql().WithContext(ctx).Model(&model.Comment{}).Where("article_id = ?", articleid).Find(&view).Error
 	if err != nil {
 		logrus.Errorf("find the comment by articleid %d failed: %v", articleid, err)
 	}
@@ -115,25 +113,4 @@ func (c *comment) FindCommentByArticleid(ctx context.Context, articleid uint) (v
 }
 
 // should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
-var _c = &Comment{}
-
-/*评论表*/
-type Comment struct {
-	ID        uint `gorm:"primaryKey;autoIncrement"`
-	CreateAt  time.Time
-	TopID     uint   `gorm:"not null;index:search"`
-	Content   string `gorm:"type:varchar(255);not null"`
-	ArticleID uint   `gorm:"not null;index:search"`
-	Creator   string `gorm:"varchar(64) not null;index:search"`
-}
-
-func (comment *Comment) TableName() string {
-	return "comment"
-}
-func (comment *Comment) MarshalBinary() ([]byte, error) {
-	return json.Marshal(comment)
-}
-
-func (comment *Comment) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, comment)
-}
+var _c = &model.Comment{}

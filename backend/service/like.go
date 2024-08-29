@@ -2,6 +2,7 @@ package service
 
 import (
 	"blog/dao"
+	"blog/model"
 	"context"
 	"fmt"
 
@@ -26,7 +27,7 @@ func (l *like) SetAsLike(ctx context.Context, publickey string, articleid uint) 
 	likeDAO := dao.GetLike()
 	like_relationshipDAO := dao.GetLikeRelationship()
 	var ok bool
-	ok, err = like_relationshipDAO.FindLikeRelationshipByArticleIDAndUserid(ctx, &dao.LikeRelationship{ArticleID: articleid, PublicKey: publickey})
+	ok, err = like_relationshipDAO.FindLikeRelationshipByArticleIDAndUserid(ctx, &model.LikeRelationship{ArticleID: articleid, PublicKey: publickey})
 	if ok || err != nil {
 		if err != nil {
 			logrus.Errorf("find like relationship by articleid and userid failed: %v", err)
@@ -35,7 +36,7 @@ func (l *like) SetAsLike(ctx context.Context, publickey string, articleid uint) 
 		}
 		return
 	}
-	like := &dao.Like{
+	like := &model.Like{
 		ArticleID: articleid,
 		LikeNum:   1,
 	}
@@ -48,7 +49,7 @@ func (l *like) SetAsLike(ctx context.Context, publickey string, articleid uint) 
 			likeDAO.DecrementLike(ctx, like)
 		}
 	}()
-	like_relationship := &dao.LikeRelationship{
+	like_relationship := &model.LikeRelationship{
 		ArticleID: articleid,
 		PublicKey: publickey,
 	}
@@ -66,7 +67,7 @@ func (l *like) CancelLike(ctx context.Context, publickey string, articleid uint)
 	likeDAO := dao.GetLike()
 	like_relationshipDAO := dao.GetLikeRelationship()
 	var ok bool
-	ok, err = like_relationshipDAO.FindLikeRelationshipByArticleIDAndUserid(ctx, &dao.LikeRelationship{ArticleID: articleid, PublicKey: publickey})
+	ok, err = like_relationshipDAO.FindLikeRelationshipByArticleIDAndUserid(ctx, &model.LikeRelationship{ArticleID: articleid, PublicKey: publickey})
 	if ok || err != nil {
 		if err != nil {
 			logrus.Errorf("find like relationship by articleid and userid failed: %v", err)
@@ -75,7 +76,7 @@ func (l *like) CancelLike(ctx context.Context, publickey string, articleid uint)
 		}
 		return
 	}
-	like := &dao.Like{
+	like := &model.Like{
 		ArticleID: articleid,
 		LikeNum:   1,
 	}
@@ -88,7 +89,7 @@ func (l *like) CancelLike(ctx context.Context, publickey string, articleid uint)
 			likeDAO.IncrementLike(ctx, like)
 		}
 	}()
-	like_relationship := &dao.LikeRelationship{
+	like_relationship := &model.LikeRelationship{
 		ArticleID: articleid,
 		PublicKey: publickey,
 	}
@@ -98,6 +99,6 @@ func (l *like) CancelLike(ctx context.Context, publickey string, articleid uint)
 
 func (l *like) FindIsExist(ctx context.Context, articleid uint, publickey string) (exist bool, err error) {
 	like_relationshipDap := dao.GetLikeRelationship()
-	exist, err = like_relationshipDap.FindLikeRelationshipByArticleIDAndUserid(ctx, &dao.LikeRelationship{ArticleID: articleid, PublicKey: publickey})
+	exist, err = like_relationshipDap.FindLikeRelationshipByArticleIDAndUserid(ctx, &model.LikeRelationship{ArticleID: articleid, PublicKey: publickey})
 	return
 }

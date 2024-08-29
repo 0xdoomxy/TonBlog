@@ -2,8 +2,8 @@ package dao
 
 import (
 	"blog/dao/db"
+	"blog/model"
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -20,7 +20,7 @@ func GetLike() *like {
 }
 
 func init() {
-	db.GetMysql().AutoMigrate(&Like{})
+	db.GetMysql().AutoMigrate(&model.Like{})
 	likeDao = newLikeDao()
 }
 
@@ -53,7 +53,7 @@ func (l *like) initLikeToCache(ctx context.Context, articleId uint) (err error) 
 		return nil
 	}
 	storage := db.GetMysql()
-	var like Like
+	var like model.Like
 	err = storage.Where("article_id = ?", articleId).First(&like).Error
 	if err != nil {
 		logrus.Errorf("init like to cache failed: %s", err.Error())
@@ -77,7 +77,7 @@ func (l *like) onceInitLikeToCache(ctx context.Context, articleid uint) (err err
 	return
 }
 
-func (l *like) IncrementLike(ctx context.Context, like *Like) (err error) {
+func (l *like) IncrementLike(ctx context.Context, like *model.Like) (err error) {
 	err = l.onceInitLikeToCache(ctx, like.ArticleID)
 	if err != nil {
 		logrus.Errorf("init like %v failed:%s", like, err.Error())
@@ -96,7 +96,7 @@ func (l *like) IncrementLike(ctx context.Context, like *Like) (err error) {
 	l.rwmutex.Unlock()
 	return l.IncrementLike(ctx, like)
 }
-func (l *like) DecrementLike(ctx context.Context, like *Like) (err error) {
+func (l *like) DecrementLike(ctx context.Context, like *model.Like) (err error) {
 	err = l.onceInitLikeToCache(ctx, like.ArticleID)
 	if err != nil {
 		logrus.Errorf("init like %v failed:%s", like, err.Error())
@@ -117,13 +117,13 @@ func (l *like) DecrementLike(ctx context.Context, like *Like) (err error) {
 
 }
 
-func (l *like) FindLikeById(ctx context.Context, articleid uint) (like Like, err error) {
+func (l *like) FindLikeById(ctx context.Context, articleid uint) (like model.Like, err error) {
 	err = l.onceInitLikeToCache(ctx, articleid)
 	if err != nil {
 		logrus.Errorf("init like %v failed:%s", like, err.Error())
 		return
 	}
-	like = Like{
+	like = model.Like{
 		ArticleID: articleid,
 	}
 	cache := db.GetRedis()
@@ -148,16 +148,15 @@ func (l *like) DeleteLike(ctx context.Context, articleid uint) (err error) {
 		logrus.Errorf("delete the like %d cache failed: %s", articleid, err.Error())
 		return
 	}
-	err = db.GetMysql().Where("article_id = ?", articleid).Delete(&Like{}).Error
+	err = db.GetMysql().Where("article_id = ?", articleid).Delete(&model.Like{}).Error
 	if err != nil {
 		logrus.Errorf("delete the like %d failed: %s", articleid, err.Error())
 	}
 	l.compensateLike(articleid)
-
 	return
 }
 
-func (l *like) CreateLike(ctx context.Context, like *Like) (err error) {
+func (l *like) CreateLike(ctx context.Context, like *model.Like) (err error) {
 	err = db.GetMysql().Create(like).Error
 	return
 }
@@ -176,21 +175,4 @@ func (l *like) compensateLike(articleid uint) {
 }
 
 // should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix
-var _l = &Like{}
-
-/*文章关注总览表*/
-type Like struct {
-	ArticleID uint `gorm:"not null;Index:searchLike"`
-	LikeNum   uint `gorm:"not null"`
-}
-
-func (like *Like) TableName() string {
-	return "like"
-}
-func (like *Like) MarshalBinary() ([]byte, error) {
-	return json.Marshal(like)
-}
-
-func (like *Like) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, like)
-}
+var _l = &model.Like{}

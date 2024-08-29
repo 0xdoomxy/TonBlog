@@ -2,6 +2,7 @@ package cron
 
 import (
 	"blog/dao"
+	"blog/model"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -48,7 +49,7 @@ func (acc *accessConsumerCron) Run() {
 					msg.Ack(true)
 					return
 				}
-				var access = dao.Access{}
+				var access = model.Access{}
 				err = json.Unmarshal(raw, &access)
 				if err != nil {
 					msg.Ack(false)
