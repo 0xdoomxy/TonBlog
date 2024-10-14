@@ -5,7 +5,9 @@ import (
 	"blog/model"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"golang.org/x/sync/singleflight"
 	"strconv"
 
 	"github.com/redis/go-redis/v9"
@@ -18,6 +20,7 @@ func GetTagRelationship() *tagRelationship {
 
 type tagRelationship struct {
 	cacheKey string
+	sf       singleflight.Group
 }
 
 var tagRelationshipDao *tagRelationship = newTagRelationshipDao()
@@ -25,6 +28,7 @@ var tagRelationshipDao *tagRelationship = newTagRelationshipDao()
 func newTagRelationshipDao() *tagRelationship {
 	return &tagRelationship{
 		cacheKey: _tr.TableName(),
+		sf:       singleflight.Group{},
 	}
 }
 
@@ -37,7 +41,7 @@ func (t *tagRelationship) CreateTagRelationship(ctx context.Context, tagRelation
 	cache := db.GetRedis()
 	key := fmt.Sprintf("%s_%s", t.cacheKey, tagRelationship.Name)
 	ignoreErr := cache.SAdd(ctx, key, tagRelationship.ArticleId).Err()
-	if ignoreErr != nil && ignoreErr != redis.Nil {
+	if ignoreErr != nil && !errors.Is(ignoreErr, redis.Nil) {
 		defer cache.Del(ctx, key)
 		logrus.Errorf("add the tag relationship %v to redis failed:%s", tagRelationship, ignoreErr.Error())
 	}
@@ -66,7 +70,7 @@ func (t *tagRelationship) BatchCreateTagRelationship(ctx context.Context, tagRel
 	for k, v := range agg {
 		key := fmt.Sprintf("%s_%s", t.cacheKey, k)
 		ignoreErr := cache.SAdd(ctx, key, v).Err()
-		if ignoreErr != nil && ignoreErr != redis.Nil {
+		if ignoreErr != nil && !errors.Is(ignoreErr, redis.Nil) {
 			defer cache.Del(ctx, key)
 			logrus.Errorf("add the tag relationship %v to redis failed:%s", tagRelationships, ignoreErr.Error())
 		}
@@ -99,61 +103,67 @@ func (t *tagRelationship) BatchDeleteTagRelationship(ctx context.Context, tagRel
 }
 
 func (t *tagRelationship) FindTagRelationshipByName(ctx context.Context, name string, page int, pagesize int) (view TagRelationships, err error) {
-	cache := db.GetRedis()
-	key := fmt.Sprintf("%s_%s", t.cacheKey, name)
-	start := page - 1
-	size := pagesize
-	var articlesStr []string
-	articlesStr, err = cache.SMembers(ctx, key).Result()
-	if err != nil || len(articlesStr) > 0 {
+	var rawTagRelationships interface{}
+	rawTagRelationships, err, _ = t.sf.Do(fmt.Sprintf("tag_relationship_byname_%s_%d_%d", name, page, pagesize), func() (interface{}, error) {
+		var inner_t TagRelationships = make(TagRelationships, 0, pagesize)
+		var e error
+		cache := db.GetRedis()
+		key := fmt.Sprintf("%s_%s", t.cacheKey, name)
+		start := page - 1
+		size := pagesize
+		var articlesStr []string
+		articlesStr, e = cache.SMembers(ctx, key).Result()
+		if e != nil || len(articlesStr) > 0 {
+			if e != nil {
+				logrus.Errorf("find tag relationship %s from redis failed:%s", name, e.Error())
+				return inner_t, e
+			}
+			size := max(size, len(articlesStr))
+			var articleid int
+			var articleStr string
+			if start >= len(articlesStr) {
+				return inner_t, e
+			}
+			for i := start; i < size+start; i++ {
+				if i >= len(articlesStr) {
+					break
+				}
+				articleStr = articlesStr[i]
+				articleid, e = strconv.Atoi(articleStr)
+				if e != nil {
+					logrus.Errorf("convert the articleid %s failed:%v", articleStr, e)
+					return inner_t, e
+				}
+				inner_t = append(inner_t, &model.TagRelationship{
+					Name:      name,
+					ArticleId: uint(articleid),
+				})
+			}
+			return inner_t, e
+		}
+		err = db.GetMysql().WithContext(ctx).Model(&model.TagRelationship{}).Where("name = ?", name).Limit(pagesize).Offset(start).Scan(&inner_t).Error
 		if err != nil {
-			logrus.Errorf("find tag relationship %s from redis failed:%s", name, err.Error())
-			return
+			logrus.Errorf("find tag relationship %s failed:%v", name, err)
+			return inner_t, e
 		}
-		size := max(size, len(articlesStr))
-		view = make(TagRelationships, 0, pagesize)
-		var articleid int
-		var articleStr string
-		if start >= len(articlesStr) {
-			return
+		var ids = make([]any, 0, len(inner_t))
+		for _, v := range inner_t {
+			ids = append(ids, v.ArticleId)
 		}
-		for i := start; i < size+start; i++ {
-			if i >= len(articlesStr) {
-				break
-			}
-			articleStr = articlesStr[i]
-			articleid, err = strconv.Atoi(articleStr)
-			if err != nil {
-				logrus.Errorf("convert the articleid %s failed:%v", articleStr, err)
-				return
-			}
-			view = append(view, &model.TagRelationship{
-				Name:      name,
-				ArticleId: uint(articleid),
-			})
+		ignoreErr := cache.SAdd(ctx, key, ids...).Err()
+		if ignoreErr != nil {
+			logrus.Errorf("add the tag relationship %v to redis failed:%s", inner_t, ignoreErr.Error())
 		}
-		return
-	}
-	err = db.GetMysql().WithContext(ctx).Model(&model.TagRelationship{}).Where("name = ?", name).Limit(pagesize).Offset(start).Scan(&view).Error
-	if err != nil {
-		logrus.Errorf("find tag relationship %s failed:%v", name, err)
-		return
-	}
-	var ids = make([]any, 0, len(view))
-	for _, v := range view {
-		ids = append(ids, v.ArticleId)
-	}
-	ignoreErr := cache.SAdd(ctx, key, ids...).Err()
-	if ignoreErr != nil {
-		logrus.Errorf("add the tag relationship %v to redis failed:%s", view, ignoreErr.Error())
-	}
-	return
+		return inner_t, e
+	})
+
+	return rawTagRelationships.(TagRelationships), err
 }
 func (t *tagRelationship) DeleteTagRelationship(ctx context.Context, tagRelationship *model.TagRelationship) (err error) {
 	cache := db.GetRedis()
 	key := fmt.Sprintf("%s_%s", t.cacheKey, tagRelationship.Name)
 	err = cache.SRem(ctx, key, tagRelationship.ArticleId).Err()
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		logrus.Errorf("delete the tag relationship %v failed:%s", tagRelationship, err.Error())
 		return
 	}

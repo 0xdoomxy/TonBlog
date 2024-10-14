@@ -4,7 +4,10 @@ import (
 	"blog/dao/db"
 	"blog/model"
 	"context"
+	"errors"
 	"fmt"
+	"golang.org/x/sync/singleflight"
+	"gorm.io/gorm"
 	"os"
 	"os/signal"
 	"reflect"
@@ -106,6 +109,7 @@ type likeRelationship struct {
 	dumpFunc       sync.Pool
 	maxcount       int32
 	mutex          *sync.Mutex
+	sf             singleflight.Group
 }
 
 func newLikeRelationshipDao() (res *likeRelationship) {
@@ -157,6 +161,7 @@ func newLikeRelationshipDao() (res *likeRelationship) {
 			return dumpFunc
 		},
 	}
+	res.sf = singleflight.Group{}
 	return
 }
 
@@ -195,28 +200,42 @@ func (l *likeRelationship) CreateLikeRelationship(ctx context.Context, likeRelat
 
 func (l *likeRelationship) DeleteLikeRelationship(ctx context.Context, likeRelationship *model.LikeRelationship) (err error) {
 	cache := db.GetRedis()
+	var isDelete bool = false
+
+	defer func() {
+		if err == nil && !isDelete {
+			err = fmt.Errorf("delete like relationship cant exist")
+		}
+	}()
 	var res int64
 	res, err = cache.ZRem(ctx, fmt.Sprintf("%s_%d", l.cacheKeyPrefix, likeRelationship.ArticleID), likeRelationship.PublicKey).Result()
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		logrus.Errorf("delete the like relationship %v failed: %s", likeRelationship, err)
 		return
 	}
+	if err == nil {
+		isDelete = true
+	}
 	if res <= 0 {
 		// the like relationship is storaged by the mysql
-		err = db.GetMysql().WithContext(ctx).Model(&model.LikeRelationship{}).Where("article_id = ? and public_key = ?", likeRelationship.ArticleID, likeRelationship.PublicKey).Delete(&model.LikeRelationship{}).Error
-		if err != nil {
-			logrus.Errorf("delete the like relationship %v failed: %s", likeRelationship, err.Error())
+		var deleteRes *gorm.DB
+		deleteRes = db.GetMysql().WithContext(ctx).Model(&model.LikeRelationship{}).Where("article_id = ? and public_key = ?", likeRelationship.ArticleID, likeRelationship.PublicKey).Delete(&model.LikeRelationship{})
+		if deleteRes.Error != nil {
+			logrus.Errorf("delete the like relationship %v failed: %s", likeRelationship, deleteRes.Error.Error())
 			return
+		} else if deleteRes.RowsAffected > 0 {
+			isDelete = true
 		}
 	}
 	return
 }
 
 func (l *likeRelationship) FindLikeRelationshipByArticleID(ctx context.Context, likeRelationship *model.LikeRelationship) (likeRelationships []*model.LikeRelationship, err error) {
+
 	cache := db.GetRedis()
 	var userPublickeyStr []string
 	userPublickeyStr, err = cache.ZRange(ctx, fmt.Sprintf("%s_%d", l.cacheKeyPrefix, likeRelationship.ArticleID), 0, -1).Result()
-	if err != redis.Nil {
+	if !errors.Is(err, redis.Nil) {
 		if err != nil {
 			logrus.Errorf("find the like relationship by articleid %v failed: %v", likeRelationship, err)
 		}
@@ -239,26 +258,31 @@ func (l *likeRelationship) FindLikeRelationshipByArticleID(ctx context.Context, 
 }
 
 func (l *likeRelationship) FindLikeRelationshipByArticleIDAndUserid(ctx context.Context, likeRelationship *model.LikeRelationship) (exist bool, err error) {
-	cache := db.GetRedis()
-	_, err = cache.ZScore(ctx, fmt.Sprintf("%s_%d", l.cacheKeyPrefix, likeRelationship.ArticleID), likeRelationship.PublicKey).Result()
-	if err != redis.Nil {
-		if err != nil {
-			logrus.Errorf("find the like relationship by articleid %v failed: %v", likeRelationship, err)
+	var rawExist interface{}
+	rawExist, err, _ = l.sf.Do(fmt.Sprintf("like_relationship_article_%d_user_%s", likeRelationship.ArticleID, likeRelationship.PublicKey), func() (inner_e interface{}, e error) {
+		cache := db.GetRedis()
+		_, e = cache.ZScore(ctx, fmt.Sprintf("%s_%d", l.cacheKeyPrefix, likeRelationship.ArticleID), likeRelationship.PublicKey).Result()
+		if !errors.Is(e, redis.Nil) {
+			if e != nil {
+				logrus.Errorf("find the like relationship by articleid %v failed: %v", likeRelationship, e)
+				return
+			}
+			inner_e = true
 			return
 		}
-		exist = true
+		var count int64
+		e = db.GetMysql().WithContext(ctx).Model(&model.LikeRelationship{}).Where("article_id = ? and public_key = ? ", likeRelationship.ArticleID, likeRelationship.PublicKey).Count(&count).Error
+		if e != nil {
+			logrus.Errorf("find the like relationship by articleid %v failed: %v", likeRelationship, e)
+			return
+		}
+		if count > 0 {
+			inner_e = true
+		}
 		return
-	}
-	var count int64
-	err = db.GetMysql().WithContext(ctx).Model(&model.LikeRelationship{}).Where("article_id = ? and public_key = ? ", likeRelationship.ArticleID, likeRelationship.PublicKey).Count(&count).Error
-	if err != nil {
-		logrus.Errorf("find the like relationship by articleid %v failed: %v", likeRelationship, err)
-		return
-	}
-	if count > 0 {
-		exist = true
-	}
-	return
+	})
+
+	return rawExist.(bool), err
 }
 
 // should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix

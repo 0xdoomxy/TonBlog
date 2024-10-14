@@ -5,7 +5,9 @@ import (
 	"blog/model"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"golang.org/x/sync/singleflight"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -23,6 +25,7 @@ func GetTag() *tag {
 type tag struct {
 	_        [0]func()
 	cachekey string
+	sf       singleflight.Group
 }
 
 var tagDao *tag = newTagDao()
@@ -30,6 +33,7 @@ var tagDao *tag = newTagDao()
 func newTagDao() *tag {
 	return &tag{
 		cachekey: _t.TableName(),
+		sf:       singleflight.Group{},
 	}
 }
 
@@ -49,7 +53,7 @@ func (t *tag) FindTag(ctx context.Context, name string) (tag model.Tag, err erro
 	cache := db.GetRedis()
 	key := fmt.Sprintf("%s_%s", t.cachekey, name)
 	err = cache.Get(ctx, key).Scan(&tag)
-	if err != redis.Nil {
+	if !errors.Is(err, redis.Nil) {
 		if err != nil {
 			logrus.Errorf("get tag %s from redis failed:%v", name, err.Error())
 		}
@@ -68,7 +72,7 @@ func (t *tag) DeleteTag(ctx context.Context, name string) (err error) {
 	cache := db.GetRedis()
 	key := fmt.Sprintf("%s_%s", t.cachekey, name)
 	err = cache.Del(ctx, key).Err()
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		logrus.Errorf("delete tag %s from redis failed:%s", name, err.Error())
 		return
 	}
@@ -95,7 +99,7 @@ func (t *tag) FindAndIncrementTagNumByName(ctx context.Context, name string, num
 	}()
 	key := fmt.Sprintf("%s_%s", t.cachekey, name)
 	err = cache.Del(ctx, key).Err()
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		logrus.Errorf("delete tag %s from redis failed:%s", name, err.Error())
 		return
 	}
@@ -109,24 +113,31 @@ func (t *tag) FindAndIncrementTagNumByName(ctx context.Context, name string, num
 	return
 }
 func (t *tag) FindAllTags(ctx context.Context) (tags Tags, err error) {
-	cache := db.GetRedis()
-	err = cache.Get(ctx, ALL_TAGS_CACHE_KEY).Scan(&tags)
-	if err != redis.Nil {
-		if err != nil {
-			logrus.Errorf("get all tags from redis failed:%s", err.Error())
+	var rawTags interface{}
+	rawTags, err, _ = t.sf.Do("all_tags", func() (interface{}, error) {
+		var inner_t Tags
+		var e error
+		cache := db.GetRedis()
+		e = cache.Get(ctx, ALL_TAGS_CACHE_KEY).Scan(&inner_t)
+		if !errors.Is(e, redis.Nil) {
+			if e != nil {
+				logrus.Errorf("get all tags from redis failed:%s", e.Error())
+			}
+			return inner_t, e
 		}
-		return
-	}
-	err = db.GetMysql().Model(&model.Tag{}).WithContext(ctx).Find(&tags).Error
-	if err != nil {
-		logrus.Errorf("get all tags from  mysql:%s", err.Error())
-		return
-	}
-	ignoreErr := cache.Set(ctx, ALL_TAGS_CACHE_KEY, &tags, 2*time.Minute).Err()
-	if ignoreErr != nil {
-		logrus.Errorf("all tags set the redis error :%s", ignoreErr.Error())
-	}
-	return
+		e = db.GetMysql().Model(&model.Tag{}).WithContext(ctx).Find(&inner_t).Error
+		if e != nil {
+			//TODO if not records in database,the logic will error
+			logrus.Errorf("get all tags from  mysql:%s", e.Error())
+			return inner_t, e
+		}
+		ignoreErr := cache.Set(ctx, ALL_TAGS_CACHE_KEY, &inner_t, 2*time.Minute).Err()
+		if ignoreErr != nil {
+			logrus.Errorf("all tags set the redis error :%s", ignoreErr.Error())
+		}
+		return inner_t, e
+	})
+	return rawTags.(Tags), err
 }
 
 type Tags []*model.Tag

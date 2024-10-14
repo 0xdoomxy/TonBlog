@@ -7,7 +7,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 	"io"
 	"strconv"
@@ -68,12 +70,12 @@ func init() {
 	if err != nil {
 		logrus.Panic("check the index exist failed:", err.Error())
 	}
-	if resp.IsError() {
+	if resp != nil && resp.IsError() {
 		resp, err = es.Indices.Create(articleContentEsIndex, es.Indices.Create.WithBody(strings.NewReader(article_es_mapping)))
 		if err != nil {
 			logrus.Panicf("create the index %s mapper %s failed: %s", articleContentEsIndex, article_es_mapping, err.Error())
 		}
-		if resp.IsError() {
+		if resp != nil && resp.IsError() {
 			logrus.Panicf("create the index %s mapper %s failed: %s", articleContentEsIndex, article_es_mapping, resp.String())
 		}
 	}
@@ -81,6 +83,7 @@ func init() {
 	articleDao.esIndex = articleContentEsIndex
 	articleDao.cachems = viper.GetInt64("cache.cleaninterval")
 	articleDao.cachekeyPrefix = _a.TableName()
+	articleDao.sf = singleflight.Group{}
 }
 
 type article struct {
@@ -89,6 +92,7 @@ type article struct {
 	esIndex        string
 	cachems        int64
 	cachekeyPrefix string
+	sf             singleflight.Group
 }
 
 var articleDao = &article{}
@@ -101,7 +105,7 @@ func (a *article) CreateArticle(ctx context.Context, article *model.Article) (id
 	id = article.ID
 	abort := db.GetRedis().Set(ctx, fmt.Sprintf("%s_%d", a.cachekeyPrefix, article.ID), article, time.Millisecond*time.Duration(a.cachems)).Err()
 	if abort != nil {
-		logrus.Errorf("set article %v cache failed: %s", article, err.Error())
+		logrus.Errorf("set article %v cache failed: %s", article, abort.Error())
 	}
 	return
 }
@@ -138,47 +142,55 @@ func (a *article) DeleteArticle(ctx context.Context, id uint) (err error) {
 	return
 }
 func (a *article) FindArticlePaticalById(ctx context.Context, id uint) (article model.Article, err error) {
-	cache := db.GetRedis()
-	key := fmt.Sprintf("%s_%d", a.cachekeyPrefix, id)
-	err = cache.Get(ctx, key).Scan(&article)
-	if err != redis.Nil {
-		if err != nil {
-			logrus.Errorf("find article %d from redis failed:%s", id, err.Error())
+	var rawArticle interface{}
+	rawArticle, err, _ = a.sf.Do(fmt.Sprintf("article_partical_%d", int(id)), func() (inner_a interface{}, e error) {
+		cache := db.GetRedis()
+		key := fmt.Sprintf("%s_%d", a.cachekeyPrefix, id)
+		e = cache.Get(ctx, key).Scan(&inner_a)
+		if !errors.Is(e, redis.Nil) {
+			if e != nil {
+				logrus.Errorf("find article %d from redis failed:%s", id, e.Error())
+			}
+			return
+		}
+		e = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Select("id, title, creator, tags,created_at,images,is_repost,repost_url").Where("id = ?", id).First(&inner_a).Error
+		if e != nil {
+			if errors.Is(e, gorm.ErrRecordNotFound) {
+				cache.Set(ctx, key, nil, time.Millisecond*time.Duration(a.cachems))
+			}
+			logrus.Errorf("find aritcle partical %d from mysql failed:%s", id, e.Error())
 		}
 		return
-	}
-	err = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Select("id, title, creator, tags,created_at,images,is_repost,repost_url").Where("id = ?", id).First(&article).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			cache.Set(ctx, key, nil, time.Millisecond*time.Duration(a.cachems))
-		}
-		logrus.Errorf("find aritcle partical %d from mysql failed:%s", id, err.Error())
-	}
-	return
+	})
+	return rawArticle.(model.Article), err
 }
 func (a *article) FindArticleById(ctx context.Context, id uint) (article model.Article, err error) {
-	cache := db.GetRedis()
-	key := fmt.Sprintf("%s_%d", a.cachekeyPrefix, id)
-	err = cache.Get(ctx, key).Scan(&article)
-	if err != redis.Nil {
-		if err != nil {
-			logrus.Errorf("get article %d cache failed: %s", id, err.Error())
+	var rawArticle interface{}
+	rawArticle, err, _ = a.sf.Do(fmt.Sprintf("%d", id), func() (inner_a interface{}, e error) {
+		cache := db.GetRedis()
+		key := fmt.Sprintf("%s_%d", a.cachekeyPrefix, id)
+		e = cache.Get(ctx, key).Scan(&inner_a)
+		if !errors.Is(e, redis.Nil) {
+			if e != nil {
+				logrus.Errorf("get article %d cache failed: %s", id, e.Error())
+			}
+			return
+		}
+		e = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Where("id = ?", id).First(&inner_a).Error
+		if e != nil {
+			if errors.Is(e, gorm.ErrRecordNotFound) {
+				cache.Set(ctx, key, nil, time.Millisecond*time.Duration(a.cachems))
+			}
+			logrus.Errorf("get article %d from mysql failed: %s", id, e.Error())
+			return
+		}
+		ignoreErr := cache.Set(ctx, key, &inner_a, time.Millisecond*time.Duration(a.cachems)).Err()
+		if ignoreErr != nil {
+			logrus.Errorf("set article %d cache failed: %s", id, ignoreErr.Error())
 		}
 		return
-	}
-	err = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Where("id = ?", id).First(&article).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			cache.Set(ctx, key, nil, time.Millisecond*time.Duration(a.cachems))
-		}
-		logrus.Errorf("get article %d from mysql failed: %s", id, err.Error())
-		return
-	}
-	ignoreErr := cache.Set(ctx, key, &article, time.Millisecond*time.Duration(a.cachems)).Err()
-	if ignoreErr != nil {
-		logrus.Errorf("set article %d cache failed: %s", id, ignoreErr.Error())
-	}
-	return
+	})
+	return rawArticle.(model.Article), err
 }
 
 /*
@@ -221,7 +233,6 @@ func (a *article) BuildArticleSearch(ctx context.Context, article *model.Article
 
 func (a *article) SearchArticleByPage(ctx context.Context, keyword string, page, size int) (articlesid []uint64, total uint, err error) {
 	var req esapi.SearchRequest
-	a.searchEngine.Search()
 	req.Index = []string{a.esIndex}
 	req.Body = strings.NewReader(`
 		{
@@ -273,17 +284,34 @@ func (a *article) SearchArticleByPage(ctx context.Context, keyword string, page,
 	return
 }
 
+type articleSlice struct {
+	raw   []*model.Article
+	total int64
+}
+
 func (a *article) FindArticlePaticalByCreateTime(ctx context.Context, page, size int) (articles []*model.Article, total int64, err error) {
-	storage := db.GetMysql()
-	err = storage.WithContext(ctx).Model(&model.Article{}).Count(&total).Error
-	if err != nil {
-		return
-	}
-	err = storage.WithContext(ctx).Model(&model.Article{}).Select("id, title, creator, tags,created_at,images,is_repost,repost_url").Order("created_at desc").Offset((page - 1) * size).Limit(size).Find(&articles).Error
-	if err != nil {
-		return
-	}
-	return
+	var rawArticles interface{}
+	rawArticles, err, _ = a.sf.Do(fmt.Sprintf("article_patical_createtime_%d_%d", page, size), func() (interface{}, error) {
+		var e error
+		var inner_a = &articleSlice{
+			raw:   make([]*model.Article, 0),
+			total: 0,
+		}
+		storage := db.GetMysql()
+		e = storage.WithContext(ctx).Model(&model.Article{}).Count(&inner_a.total).Error
+		if e != nil {
+			logrus.Errorf("failed to count article by create time failed: %s", e.Error())
+			return nil, e
+		}
+		e = storage.WithContext(ctx).Model(&model.Article{}).Select("id, title, creator, tags,created_at,images,is_repost,repost_url").Where("id > ? and id <= ?", (page-1)*size, page*size).Find(&inner_a.raw).Error
+		if e != nil {
+			logrus.Errorf("find articles page:%d  size:%d failed:%s", page, size, e.Error())
+			return nil, e
+		}
+		return inner_a, e
+	})
+	res := rawArticles.(*articleSlice)
+	return res.raw, res.total, err
 }
 
 // should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix

@@ -2,6 +2,7 @@ package service
 
 import (
 	"blog/dao"
+	"blog/model"
 	"context"
 	"fmt"
 	"time"
@@ -24,7 +25,7 @@ func (c *comment) CreateComment(ctx context.Context, articleid uint, creator str
 	if err != nil {
 		return
 	}
-	comment := dao.Comment{
+	comment := model.Comment{
 		ArticleID: articleid,
 		Creator:   creator,
 		Content:   content,
@@ -34,7 +35,7 @@ func (c *comment) CreateComment(ctx context.Context, articleid uint, creator str
 	err = dao.GetComment().CreateComment(ctx, &comment)
 	return
 }
-func (c *comment) FindCommentByArticle(ctx context.Context, articleid uint) (comments []*dao.Comment, err error) {
+func (c *comment) FindCommentByArticle(ctx context.Context, articleid uint) (comments []*model.Comment, err error) {
 	comments, err = dao.GetComment().FindCommentByArticleid(ctx, articleid)
 	if err != nil {
 		logrus.Error("find comment by article failed:", err)
@@ -45,7 +46,7 @@ func (c *comment) DeleteComment(ctx context.Context, articleid uint, id uint, cr
 	commentdao := dao.GetComment()
 	articledao := dao.GetArticle()
 	var ok bool
-	var article dao.Article
+	var article model.Article
 	article, err = articledao.FindArticlePaticalById(ctx, articleid)
 	if err != nil {
 		logrus.Errorf("find article failed:%v", err)
