@@ -7,8 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/sync/singleflight"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"

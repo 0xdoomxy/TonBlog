@@ -1,4 +1,4 @@
-import React, from "react";
+import React from "react";
 import {Timeline} from "antd";
 import avatar from "../asserts/avatar.jpg";
 import {Header} from "../components";
@@ -49,7 +49,7 @@ const AboutPage = () => {
                     </div>
                 </div>
                 {/* 右边 */}
-                <div className="w-full h-full pl-6 pt-6  flex flex-col">
+                <div  className="w-full h-full pl-6 pt-6  flex flex-col">
                     <div className="w-full h-1/3 flex flex-col">
                         <h1 className=" font-serif font-semibold md:text-xl pb-2">简&nbsp;&nbsp;&nbsp;&nbsp;介</h1>
                         <p className=" font-serif indent-4 md:text-lg text-sm line-clamp-8  md:max-h-full max-h-64  overflow-y-scroll  md:overflow-auto">本科就读于区块链工程专业,主要研究方向有区块链、大数据、云原生、全栈开发,技术栈为Golang、JavaScript、Solidity、java。曾在
@@ -80,7 +80,7 @@ const AboutPage = () => {
                     </div>
                 </div>
             </div>
-            <div className=" flex w-full h-20 border-t-2  bg-slate-50 justify-center items-center ">
+            <div  style={{height: "15%"}} className=" flex w-full h-20 border-t-2  bg-slate-50 justify-center items-center ">
                 <div className=" w-1/5"></div>
                 <div className=" h-20  w-full flex justify-around items-center">
                     <div className=" w-1/2 text-md md:pl-10">© 0xdoomxy 保留所有权利</div>

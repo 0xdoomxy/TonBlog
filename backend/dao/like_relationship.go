@@ -6,14 +6,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"golang.org/x/sync/singleflight"
-	"gorm.io/gorm"
 	"os"
 	"os/signal"
 	"reflect"
 	"sync"
 	"syscall"
 	"time"
+
+	"golang.org/x/sync/singleflight"
+	"gorm.io/gorm"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
@@ -260,6 +261,7 @@ func (l *likeRelationship) FindLikeRelationshipByArticleID(ctx context.Context, 
 func (l *likeRelationship) FindLikeRelationshipByArticleIDAndUserid(ctx context.Context, likeRelationship *model.LikeRelationship) (exist bool, err error) {
 	var rawExist interface{}
 	rawExist, err, _ = l.sf.Do(fmt.Sprintf("like_relationship_article_%d_user_%s", likeRelationship.ArticleID, likeRelationship.PublicKey), func() (inner_e interface{}, e error) {
+		inner_e = false
 		cache := db.GetRedis()
 		_, e = cache.ZScore(ctx, fmt.Sprintf("%s_%d", l.cacheKeyPrefix, likeRelationship.ArticleID), likeRelationship.PublicKey).Result()
 		if !errors.Is(e, redis.Nil) {

@@ -9,12 +9,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/sync/singleflight"
-	"gorm.io/gorm"
 	"io"
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/sync/singleflight"
+	"gorm.io/gorm"
 
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
@@ -144,16 +145,17 @@ func (a *article) DeleteArticle(ctx context.Context, id uint) (err error) {
 func (a *article) FindArticlePaticalById(ctx context.Context, id uint) (article model.Article, err error) {
 	var rawArticle interface{}
 	rawArticle, err, _ = a.sf.Do(fmt.Sprintf("article_partical_%d", int(id)), func() (inner_a interface{}, e error) {
+		inner_a = &model.Article{}
 		cache := db.GetRedis()
 		key := fmt.Sprintf("%s_%d", a.cachekeyPrefix, id)
-		e = cache.Get(ctx, key).Scan(&inner_a)
+		e = cache.Get(ctx, key).Scan(inner_a)
 		if !errors.Is(e, redis.Nil) {
 			if e != nil {
 				logrus.Errorf("find article %d from redis failed:%s", id, e.Error())
 			}
 			return
 		}
-		e = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Select("id, title, creator, tags,created_at,images,is_repost,repost_url").Where("id = ?", id).First(&inner_a).Error
+		e = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Select("id, title, creator, tags,created_at,images,is_repost,repost_url").Where("id = ?", id).First(inner_a).Error
 		if e != nil {
 			if errors.Is(e, gorm.ErrRecordNotFound) {
 				cache.Set(ctx, key, nil, time.Millisecond*time.Duration(a.cachems))
@@ -162,21 +164,22 @@ func (a *article) FindArticlePaticalById(ctx context.Context, id uint) (article 
 		}
 		return
 	})
-	return rawArticle.(model.Article), err
+	return *rawArticle.(*model.Article), err
 }
 func (a *article) FindArticleById(ctx context.Context, id uint) (article model.Article, err error) {
 	var rawArticle interface{}
 	rawArticle, err, _ = a.sf.Do(fmt.Sprintf("%d", id), func() (inner_a interface{}, e error) {
+		inner_a = &model.Article{}
 		cache := db.GetRedis()
 		key := fmt.Sprintf("%s_%d", a.cachekeyPrefix, id)
-		e = cache.Get(ctx, key).Scan(&inner_a)
+		e = cache.Get(ctx, key).Scan(inner_a)
 		if !errors.Is(e, redis.Nil) {
 			if e != nil {
 				logrus.Errorf("get article %d cache failed: %s", id, e.Error())
 			}
 			return
 		}
-		e = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Where("id = ?", id).First(&inner_a).Error
+		e = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Where("id = ?", id).First(inner_a).Error
 		if e != nil {
 			if errors.Is(e, gorm.ErrRecordNotFound) {
 				cache.Set(ctx, key, nil, time.Millisecond*time.Duration(a.cachems))
@@ -184,13 +187,13 @@ func (a *article) FindArticleById(ctx context.Context, id uint) (article model.A
 			logrus.Errorf("get article %d from mysql failed: %s", id, e.Error())
 			return
 		}
-		ignoreErr := cache.Set(ctx, key, &inner_a, time.Millisecond*time.Duration(a.cachems)).Err()
+		ignoreErr := cache.Set(ctx, key, inner_a, time.Millisecond*time.Duration(a.cachems)).Err()
 		if ignoreErr != nil {
 			logrus.Errorf("set article %d cache failed: %s", id, ignoreErr.Error())
 		}
 		return
 	})
-	return rawArticle.(model.Article), err
+	return *rawArticle.(*model.Article), err
 }
 
 /*
@@ -200,7 +203,14 @@ func (a *article) FindArticleById(ctx context.Context, id uint) (article model.A
 *
 */
 
-func (a *article) BuildArticleSearch(ctx context.Context, article *model.Article) (err error) {
+type ArticleSearcher struct {
+	ID      uint   `json:"id"`
+	Title   string `json:"title"`
+	Tags    string `json:"tags"`
+	Content string `json:"content"`
+}
+
+func (a *article) BuildArticleSearch(ctx context.Context, article *ArticleSearcher) (err error) {
 	req := esapi.CreateRequest{
 		Index:      a.esIndex,
 		DocumentID: strconv.Itoa(int(article.ID)),
@@ -216,6 +226,10 @@ func (a *article) BuildArticleSearch(ctx context.Context, article *model.Article
 		Tags:    article.Tags,
 		Title:   article.Title,
 	})
+	if err != nil {
+		logrus.Error("marshal article search failed:", err.Error())
+		return
+	}
 	req.Body = bytes.NewBuffer(bd)
 	var resp *esapi.Response
 	resp, err = req.Do(ctx, a.searchEngine)
@@ -229,6 +243,25 @@ func (a *article) BuildArticleSearch(ctx context.Context, article *model.Article
 		return
 	}
 	return
+}
+
+func (a *article) DeleteArticleByES(ctx context.Context, documentId uint) (err error) {
+	var req = esapi.DeleteRequest{
+		Index:      a.esIndex,
+		DocumentID: strconv.Itoa(int(documentId)),
+	}
+	var resp *esapi.Response
+	resp, err = req.Do(ctx, a.searchEngine)
+	if err != nil {
+		logrus.Error("search article failed:", err.Error())
+		return
+	}
+	if resp.IsError() {
+		logrus.Error("search article failed:", resp.String())
+		err = &es.ESResponseError{}
+		return
+	}
+	return nil
 }
 
 func (a *article) SearchArticleByPage(ctx context.Context, keyword string, page, size int) (articlesid []uint64, total uint, err error) {

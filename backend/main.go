@@ -73,6 +73,12 @@ func bindArticleRoutes(engine *gin.Engine) {
 	route.GET("/search", func(ctx *gin.Context) {
 		controller.GetArticle().SearchArticleByPage(ctx)
 	})
+	route.GET("/delete", jwt.NewVerifyMiddleware(), func(ctx *gin.Context) {
+		controller.GetArticle().DeleteArticle(ctx)
+	})
+	route.GET("/update", jwt.NewVerifyMiddleware(), func(ctx *gin.Context) {
+		controller.GetArticle().UpdateArticle(ctx)
+	})
 }
 
 func bindLikeRoutes(engine *gin.Engine) {

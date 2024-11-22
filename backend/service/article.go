@@ -4,9 +4,11 @@ import (
 	"blog/dao"
 	"blog/dao/db"
 	"blog/middleware/hotkey"
+	disync "blog/middleware/redsync"
 	"blog/model"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"regexp"
@@ -15,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-redsync/redsync/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -40,12 +43,14 @@ func init() {
 	articleService = &article{
 		hotArticlePool: hotArticlePool,
 		matchImage:     regexpImage,
+		disMutex:       disync.NewMutex("distribute_article"),
 	}
 }
 
 type article struct {
 	hotArticlePool *hotkey.HotKeyWithCache
 	matchImage     *regexp.Regexp
+	disMutex       *redsync.Mutex
 }
 
 var articleService *article
@@ -102,8 +107,7 @@ func (a *article) DownloadImage(filename string) (res []byte, err error) {
 func (a *article) PublishArticle(ctx context.Context, article *model.Article) (id uint, err error) {
 
 	//后端正则匹配来自于markdown文本的图片
-	var images [][]string
-	images = a.matchImage.FindAllStringSubmatch(article.Content, -1)
+	images := a.matchImage.FindAllStringSubmatch(article.Content, -1)
 	var realPictures = []string{}
 	for i := 0; i < len(images); i++ {
 		if len(images[i]) < 2 {
@@ -135,7 +139,12 @@ func (a *article) PublishArticle(ctx context.Context, article *model.Article) (i
 	}()
 	//已经拿到了articleID
 	//将文章内容和tags存储到es中
-	err = articledao.BuildArticleSearch(ctx, article)
+	err = articledao.BuildArticleSearch(ctx, &dao.ArticleSearcher{
+		ID:      article.ID,
+		Title:   article.Title,
+		Content: article.Content,
+		Tags:    article.Tags,
+	})
 	if err != nil {
 		logrus.Errorf("build article (%v) search failed: %s", article, err.Error())
 		return
@@ -250,6 +259,10 @@ func (a *article) addWithValue(articleid uint, view *ArticleView, incr uint) {
 */
 func (a *article) add(articleid uint, incr uint) {
 	a.hotArticlePool.Add(strconv.Itoa(int(articleid)), uint32(incr))
+}
+
+func (a *article) delete(articleid uint) {
+	a.hotArticlePool.DelCache(strconv.Itoa(int(articleid)))
 }
 
 /*
@@ -373,6 +386,7 @@ func (a *article) FindArticlePatical(ctx context.Context, articleid uint) (view 
 	}
 	return
 }
+
 func (a *article) SearchArticleByPage(ctx context.Context, keyword string, page int, pagesize int) (view *ArticleViewByPage, err error) {
 	articledao := dao.GetArticle()
 	var targetIds []uint64
@@ -552,4 +566,125 @@ func (a *article) FindArticlePaticalByCreateTime(ctx context.Context, page int, 
 	}
 	return
 
+}
+func (a *article) DeleteArticle(ctx context.Context, article *model.Article) (err error) {
+	var view *ArticleView
+	view, err = a.FindArticle(ctx, article.ID)
+	if err != nil || view == nil {
+		if err == nil {
+			err = fmt.Errorf("article %d not found", article.ID)
+		}
+		return err
+	}
+	if strings.Compare(view.Creator, article.Creator) != 0 {
+		err = fmt.Errorf("article delete error")
+		return
+	}
+	a.disMutex.Lock()
+	defer func() {
+		a.disMutex.Unlock()
+		if err == nil {
+			a.delete(article.ID)
+		}
+	}()
+	articledao := dao.GetArticle()
+	err = articledao.DeleteArticleByES(ctx, article.ID)
+	if err != nil {
+		logrus.Errorf("delete article  %d in elasticsearch failed: %s", article.ID, err.Error())
+		return
+	}
+	defer func() {
+		if err != nil {
+			ignoreErr := articledao.BuildArticleSearch(ctx, &dao.ArticleSearcher{
+				ID:      view.ID,
+				Title:   view.Title,
+				Content: view.Content,
+				Tags:    view.Tags,
+			})
+			if ignoreErr != nil {
+				logrus.Errorf("recover delete article %v  in elasticsearch failed: %s", article.ID, ignoreErr.Error())
+			}
+		}
+	}()
+	err = articledao.DeleteArticle(ctx, article.ID)
+	if err != nil {
+		logrus.Errorf("delete article %d failed: %s", article.ID, err.Error())
+		return
+	}
+	return
+}
+
+func (a *article) UpdateArticle(ctx context.Context, article *model.Article) (err error) {
+	//后端正则匹配来自于markdown文本的图片
+	images := a.matchImage.FindAllStringSubmatch(article.Content, -1)
+	var realPictures = []string{}
+	for i := 0; i < len(images); i++ {
+		if len(images[i]) < 2 {
+			logrus.Errorf("image regexp match failed:%s", article.Content)
+			err = errors.New("image regexp match failed")
+			return
+		}
+		realPictures = append(realPictures, images[i][1])
+
+	}
+	article.Images = strings.Join(realPictures, ",")
+	var view *ArticleView
+	view, err = a.FindArticle(ctx, article.ID)
+	if err != nil || view == nil {
+		if err == nil {
+			err = fmt.Errorf("article %d not found", article.ID)
+		}
+		return err
+	}
+	if strings.Compare(view.Creator, article.Creator) != 0 {
+		err = fmt.Errorf("article delete error")
+		return
+	}
+	a.disMutex.Lock()
+	defer func() {
+		a.disMutex.Unlock()
+		if err == nil {
+			a.delete(article.ID)
+		}
+	}()
+	rebuildSearcher := dao.ArticleSearcher{
+		ID:      article.ID,
+		Content: article.Content,
+		Tags:    article.Tags,
+		Title:   article.Title,
+	}
+	if rebuildSearcher.Content == "" {
+		rebuildSearcher.Content = view.Content
+	}
+	if rebuildSearcher.Tags == "" {
+		rebuildSearcher.Tags = view.Tags
+	}
+	if rebuildSearcher.Title == "" {
+		rebuildSearcher.Title = view.Title
+	}
+	articledao := dao.GetArticle()
+	err = articledao.BuildArticleSearch(ctx, &rebuildSearcher)
+	if err != nil {
+		logrus.Errorf("update article %v  in elasticsearch failed: %s", article, err.Error())
+		return err
+	}
+	defer func() {
+		if err != nil {
+			ignoreErr := articledao.BuildArticleSearch(ctx, &dao.ArticleSearcher{
+				ID:      view.ID,
+				Title:   view.Title,
+				Content: view.Content,
+				Tags:    view.Tags,
+			})
+			if ignoreErr != nil {
+				logrus.Errorf("recover update article %v  in elasticsearch failed: %s", article, ignoreErr.Error())
+			}
+		}
+	}()
+	err = articledao.UpdateArticle(ctx, article)
+	if err != nil {
+		logrus.Errorf("update article %v failed: %s", article, err.Error())
+		return
+	}
+	return
 }

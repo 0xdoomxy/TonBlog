@@ -7,13 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/sync/singleflight"
 	"os"
 	"os/signal"
 	"strconv"
 	"sync"
 	"syscall"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
@@ -147,27 +148,28 @@ func (a *access) IncrementAccess(articleId uint, num int) {
 func (a *access) FindAccessById(ctx context.Context, id uint) (access model.Access, err error) {
 	var rawAccess interface{}
 	rawAccess, err, _ = a.sf.Do(strconv.Itoa(int(id)), func() (inner_a interface{}, e error) {
+		inner_a = &model.Access{}
 		cache := db.GetRedis()
 		key := fmt.Sprintf("%s_%d", a.cacheKey, id)
-		e = cache.Get(ctx, key).Scan(&inner_a)
+		e = cache.Get(ctx, key).Scan(inner_a)
 		if !errors.Is(e, redis.Nil) {
 			if e != nil {
 				logrus.Errorf("get access %d from redis failed:%s", id, e.Error())
 			}
 			return
 		}
-		e = db.GetMysql().WithContext(ctx).Model(&model.Access{}).Where("article_id = ?", id).First(&inner_a).Error
+		e = db.GetMysql().WithContext(ctx).Model(&model.Access{}).Where("article_id = ?", id).First(inner_a).Error
 		if e != nil {
 			logrus.Errorf("get access %d from mysql failed:%s", id, e.Error())
 			return
 		}
-		ignoreErr := cache.Set(ctx, key, &inner_a, time.Duration(viper.GetInt64("cache.cleaninterval"))*time.Millisecond).Err()
+		ignoreErr := cache.Set(ctx, key, inner_a, time.Duration(viper.GetInt64("cache.cleaninterval"))*time.Millisecond).Err()
 		if ignoreErr != nil {
 			logrus.Errorf("set the access redis cache error:%s", ignoreErr.Error())
 		}
 		return
 	})
-	return rawAccess.(model.Access), err
+	return *rawAccess.(*model.Access), err
 }
 
 func (a *access) DeleteAccess(ctx context.Context, id uint) (err error) {

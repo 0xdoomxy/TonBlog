@@ -39,9 +39,23 @@ func (a *article) PublishArticle(ctx *gin.Context) {
 	var article = &model.Article{}
 	//添加userid 到articleMap中,必须确保articleMap中没有userid字段
 	article.Creator = publickey.(string)
+	if form.Value["title"] == nil {
+		ctx.JSON(200, utils.NewFailedResponse("文章标题不存在"))
+		return
+	}
 	article.Title = form.Value["title"][0]
+	if form.Value["content"] == nil {
+		ctx.JSON(200, utils.NewFailedResponse("不存在文章内容"))
+		return
+	}
 	article.Content = form.Value["content"][0]
-	article.Images = form.Value["images"][0]
+	if form.Value["images"] != nil {
+		article.Images = form.Value["images"][0]
+	}
+	if form.Value["tags"] == nil {
+		ctx.JSON(200, utils.NewFailedResponse("文章至少应该有一个标签"))
+		return
+	}
 	article.Tags = form.Value["tags"][0]
 	//todo: return the article id currently is useless
 	_, err = service.GetArticle().PublishArticle(ctx, article)
@@ -194,4 +208,76 @@ func (a *article) SearchArticleByPage(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(200, utils.NewSuccessResponse(view))
+}
+
+func (a *article) UpdateArticle(ctx *gin.Context) {
+	var publickey, ok = ctx.Get("publickey")
+	if !ok {
+		ctx.JSON(200, utils.NewFailedResponse("未登录"))
+		return
+	}
+	var err error
+	var form *multipart.Form
+	form, err = ctx.MultipartForm()
+	if err != nil {
+		ctx.JSON(200, utils.NewFailedResponse("参数错误"))
+		return
+	}
+	var article = &model.Article{}
+	var id uint64
+	if form.Value["id"] == nil {
+		ctx.JSON(200, utils.NewFailedResponse("参数错误"))
+		return
+	}
+	id, err = strconv.ParseUint(form.Value["id"][0], 10, 64)
+	article.ID = uint(id)
+	article.Creator = publickey.(string)
+	if form.Value["title"] == nil {
+		ctx.JSON(200, utils.NewFailedResponse("文章标题不存在"))
+		return
+	}
+	article.Title = form.Value["title"][0]
+	if form.Value["content"] == nil {
+		ctx.JSON(200, utils.NewFailedResponse("文章内容不存在"))
+	}
+	article.Content = form.Value["content"][0]
+	if form.Value["images"] != nil {
+		article.Images = form.Value["images"][0]
+	}
+	if form.Value["tags"] == nil {
+		ctx.JSON(200, utils.NewFailedResponse("文章至少应该有一个标签"))
+		return
+	}
+	article.Tags = form.Value["tags"][0]
+	err = service.GetArticle().UpdateArticle(ctx, article)
+	if err != nil {
+		ctx.JSON(200, utils.NewFailedResponse("修改失败"))
+		return
+	}
+	ctx.JSON(200, utils.NewSuccessResponse(nil))
+}
+func (a *article) DeleteArticle(ctx *gin.Context) {
+	var publickey, ok = ctx.Get("publickey")
+	if !ok {
+		ctx.JSON(200, utils.NewFailedResponse("未登录"))
+		return
+	}
+	article := &model.Article{
+		Creator: publickey.(string),
+	}
+	var err error
+	var articleid uint64
+	articleid, err = strconv.ParseUint(ctx.Query("id"), 10, 64)
+	if err != nil {
+		ctx.JSON(200, utils.NewFailedResponse("参数错误"))
+		return
+	}
+	article.ID = uint(articleid)
+	err = service.GetArticle().DeleteArticle(ctx, article)
+
+	if err != nil {
+		ctx.JSON(200, utils.NewFailedResponse("删除失败"))
+		return
+	}
+	ctx.JSON(200, utils.NewSuccessResponse(nil))
 }

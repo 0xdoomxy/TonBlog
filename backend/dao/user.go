@@ -6,8 +6,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"golang.org/x/sync/singleflight"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
@@ -43,28 +44,29 @@ func (u *user) CreateUser(user *model.User) (err error) {
 func (u *user) FindUserByAddress(ctx context.Context, address string) (user model.User, err error) {
 	var rawUser interface{}
 	rawUser, err, _ = u.sf.Do(address, func() (inner_u interface{}, e error) {
+		inner_u = &model.User{}
 		cache := db.GetRedis()
 		key := fmt.Sprintf("%s_%s", u.cachekey, address)
-		e = cache.Get(ctx, key).Scan(&inner_u)
+		e = cache.Get(ctx, key).Scan(inner_u)
 		if !errors.Is(e, redis.Nil) {
 			if e != nil {
 				logrus.Errorf("find user %v failed from redis: %s", address, e.Error())
 			}
 			return
 		}
-		e = db.GetMysql().Model(&model.User{}).Where("address = ?", address).First(&inner_u).Error
+		e = db.GetMysql().Model(&model.User{}).Where("address = ?", address).First(inner_u).Error
 		if e != nil {
 			logrus.Errorf("find user %v failed from mysql:%s", address, e.Error())
 			return
 		}
-		ignoreErr := cache.Set(ctx, key, &inner_u, 3*time.Minute).Err()
+		ignoreErr := cache.Set(ctx, key, inner_u, 3*time.Minute).Err()
 		if ignoreErr != nil {
 			logrus.Errorf("set user %v to redis failed:%s", inner_u, ignoreErr.Error())
 		}
 		return
 	})
 
-	return rawUser.(model.User), err
+	return *rawUser.(*model.User), err
 }
 
 func (u *user) DeleteUser(ctx context.Context, address string) (err error) {

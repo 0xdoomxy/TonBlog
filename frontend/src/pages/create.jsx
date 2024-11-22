@@ -19,16 +19,11 @@ import {useNavigate} from 'react-router-dom';
 
 const CreatePage = () => {
     const plugins = useMemo(() => [gfm(), highlightssr(), highlight(), breaks(), footnotes(), frontmatter(), gemoji(), mediumZoom()], []);
-    const [article, setArticle] = useState({
-        title: '请输入文章标题',
-        content: '',
-        tags: [],
-    });
+    const [article, setArticle] = useState(null);
     const navigate = useNavigate();
-    const [rawTags, setRawTags] = useState("@区块链");
+    const [rawTags, setRawTags] = useState("");
     const [showModal, setShowModal] = useState(false);
     const [alltags, setAllTags] = useState([]);
-
     function getAllTags() {
         TagClient.GetAllTags().then((data) => {
             if (data === undefined || data === null) {
@@ -48,22 +43,32 @@ const CreatePage = () => {
         })
     }
 
-    useEffect(() => {
-        getAllTags();
-    }, []);
-    //用户上传的所有图片(包括为用到的和已用到的图片)
-    const [allPictures, setAllPictures] = useState([]);
-
-    function publicArticle() {
-        var realP = [];
-        const allUrl = MatchImageUrlFromMarkdown(article.content);
-        for (let i = 0; i < allUrl.length; i++) {
-            for (let j = 0; j < allPictures.length; j++) {
-                if (allUrl[i].includes(allPictures[j])) {
-                    realP.push(allPictures[j]);
-                }
+    useEffect(()=>{
+        if(article == null){
+            let historyArticleStr = sessionStorage.getItem("create-article");
+            if (historyArticleStr !== null) {
+                let historyArticle = JSON.parse(historyArticleStr);
+                 setArticle(historyArticle);
+                 setRawTags(historyArticle.tags.replace(/,/g, '@'));
+            }else{
+                setArticle({title: "请输入文章标题", content: "", tags: ""});
             }
         }
+        if (article == null) {
+            return;
+        }
+        let replicateArticle = article;
+        replicateArticle.tags = rawTags.trim().replace(/\s/g, '').replace(/@/g, ',');
+        if (replicateArticle.tags.length > 0 && replicateArticle.tags[0] === ",") {
+            replicateArticle.tags = String(replicateArticle.tags).slice(1, replicateArticle.tags.length);
+        }
+        sessionStorage.setItem("create-article", JSON.stringify(replicateArticle));
+    },[article])
+    useEffect(() => {
+        getAllTags();
+
+    }, []);
+    function publicArticle() {
         let newArticle = article;
         newArticle.tags = rawTags.trim().replace(/\s/g, '').replace(/@/g, ',');
         if (newArticle.tags.length > 0 && newArticle.tags[0] === ",") {
@@ -73,7 +78,6 @@ const CreatePage = () => {
         pushParams.append('title', newArticle.title);
         pushParams.append('content', newArticle.content);
         pushParams.append('tags', newArticle.tags);
-        pushParams.append('images', realP.join(','));
         ArticleClient.Publish(pushParams).then((res) => {
             if (res === undefined || res === null) {
                 return;
@@ -97,7 +101,7 @@ const CreatePage = () => {
             }}>
                 <div className=' flex h-20 mt-10  justify-start items-center'>
                     <div className="w-1/6 font-semibold">文章标签</div>
-                    <Mentions className=' w-5/6' defaultValue='@区块链' value={rawTags} onChange={(option) => {
+                    <Mentions className=' w-5/6'  value={rawTags} onChange={(option) => {
                         setRawTags(option)
                     }} options={alltags}/>
                 </div>
@@ -115,7 +119,7 @@ const CreatePage = () => {
                 </div>
                 <input className=' w-4/5 indent-8 text-3xl font-semibold font-serif outline-none ' onChange={(e) => {
                     setArticle({...article, title: e.target.value})
-                }} placeholder={article.title}></input>
+                }}  value={article!=null?article.title:""}></input>
                 <div className=' flex justify-end items-center  h-full w-1/5 pr-2'>
                     <button style={{backgroundColor: 'rgb(0, 152, 234)'}}
                             className=' w-full h-full text-sm   md:w-28 border-2 rounded-xl font-semibold'
@@ -127,7 +131,7 @@ const CreatePage = () => {
             </div>
             <Editor
                 locale={zhHans}
-                value={article.content}  //markdown内容
+                value={article!=null?article.content:""}  //markdown内容
                 plugins={plugins}  //markdown中用到的插件，如表格、数学公式、流程图
                 onChange={(v) => {
                     setArticle({...article, content: v});
@@ -148,7 +152,6 @@ const CreatePage = () => {
                             toast.error(msg);
                         }
                     });
-                    setAllPictures((origin) => [...origin, filename]);
                     return [
                         {
                             title: filename,
