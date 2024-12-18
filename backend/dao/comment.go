@@ -18,7 +18,10 @@ func GetComment() *comment {
 }
 
 func init() {
-	db.GetMysql().AutoMigrate(&model.Comment{})
+	err := db.GetMysql().AutoMigrate(&model.Comment{})
+	if err != nil {
+		logrus.Panicf("auto migrate comment table error:%s", err.Error())
+	}
 	commentDao = newCommentDao()
 }
 

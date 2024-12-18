@@ -24,12 +24,12 @@ func (l *like) SetAsLike(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, utils.NewFailedResponse("参数出错"))
 		return
 	}
-	publickey, ok := ctx.Get("publickey")
+	address, ok := ctx.Get("address")
 	if !ok {
 		ctx.JSON(http.StatusBadRequest, utils.NewFailedResponse("参数出错"))
 		return
 	}
-	err = service.GetLike().SetAsLike(ctx, publickey.(string), uint(articleId))
+	err = service.GetLike().SetAsLike(ctx, address.(string), uint(articleId))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.NewFailedResponse("点赞失败"))
 		return
@@ -43,12 +43,12 @@ func (l *like) CancelLike(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, utils.NewFailedResponse("参数出错"))
 		return
 	}
-	publickey, ok := ctx.Get("publickey")
+	address, ok := ctx.Get("address")
 	if !ok {
 		ctx.JSON(http.StatusBadRequest, utils.NewFailedResponse("参数出错"))
 		return
 	}
-	err = service.GetLike().CancelLike(ctx, publickey.(string), uint(articleId))
+	err = service.GetLike().CancelLike(ctx, address.(string), uint(articleId))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.NewFailedResponse("取消点赞失败"))
 		return
@@ -62,13 +62,13 @@ func (l *like) IsExist(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, utils.NewFailedResponse("参数出错"))
 		return
 	}
-	publickey, ok := ctx.Get("publickey")
+	address, ok := ctx.Get("address")
 	if !ok {
 		ctx.JSON(http.StatusBadRequest, utils.NewFailedResponse("参数出错"))
 		return
 	}
 	var exist bool
-	exist, err = service.GetLike().FindIsExist(ctx, uint(articleId), publickey.(string))
+	exist, err = service.GetLike().FindIsExist(ctx, uint(articleId), address.(string))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.NewFailedResponse("取消点赞失败"))
 		return

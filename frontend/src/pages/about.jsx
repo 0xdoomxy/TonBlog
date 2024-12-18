@@ -7,7 +7,7 @@ const AboutPage = () => {
     return (
         <div className="w-full h-full ">
             <Header/>
-            <div style={{height: "85%"}} className="w-full flex pt-12  bg-slate-100">
+            <div style={{height: "85%"}} className="w-full flex pt-24  bg-slate-100">
                 {/* 左边 */}
                 <div
                     className=" h-full md:w-1/3 w-1/2 flex flex-col items-center justify-center border-r-2 border-gray-200">

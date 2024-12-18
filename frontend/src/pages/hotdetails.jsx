@@ -84,7 +84,7 @@ const HotDetails = () => {
                     <Spin isSpin={isLoad} className=" w-20 h-20"/></div> :
                 <div className='flex justify-center items-center'>
                     <div className=' w-1/5 h-full'></div>
-                    {isEmpty ? <div className=' h-screen flex justify-center items-center'><Empty className='pt-12'
+                    {isEmpty ? <div className=' h-screen flex justify-center items-center'><Empty className=' pt-24'
                                                                                                   image={Empty.PRESENTED_IMAGE_SIMPLE}/>
                     </div> : <div className='w-3/5 h-full pt-12'>
                         <div className=" w-full mt-8">

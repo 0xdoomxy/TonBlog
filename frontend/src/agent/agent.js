@@ -4,7 +4,8 @@ import { toast } from "react-toastify";
 const superagent = superagentPromise(_superagent, Promise);
 
 const localStorageKey = 'blog-auth-token';
-const API_ROOT ="https://www.0xdoomxy.top/blog";
+// const API_ROOT ="https://www.0xdoomxy.top/blog";
+const API_ROOT ="http://localhost:8080"
 
 // const SetAuthorizetion = (token) =>{
 //     superagent('Authorization',`Bearer ${token}`);
@@ -99,8 +100,7 @@ const LikeClient = {
 }
 
 const UserClient ={
-  Proof:(proof)=>requests.post(`/user/proof`,proof),
-  Generate:()=>requests.get(`/user/generate`),
+  Login:(signs)=>requests.post(`/user/login`,signs)
 }
 
 

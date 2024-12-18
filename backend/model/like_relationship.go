@@ -5,7 +5,7 @@ import "encoding/json"
 /*文章关注表*/
 type LikeRelationship struct {
 	ArticleID uint   `gorm:"primarykey"`
-	PublicKey string `gorm:"varchar(64);primarykey"`
+	Address   string `gorm:"address;varchar(64)"`
 }
 
 func (lrs *LikeRelationship) TableName() string {

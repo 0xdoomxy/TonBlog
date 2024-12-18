@@ -13,3 +13,5 @@ export {default as HotDetails} from './hotdetails';
 export {default as NewDetails} from './newdetails';
 
 export {default as TagDetails} from './tagdetails';
+
+export {default as AirPort} from './airport';

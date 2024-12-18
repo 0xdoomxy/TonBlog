@@ -26,7 +26,7 @@ func NewVerifyMiddleware() func(*gin.Context) {
 			ctx.AbortWithStatusJSON(401, utils.NewFailedResponse("未登录"))
 			return
 		}
-		ctx.Set("publickey", claims.PublicKey)
+		ctx.Set("address", claims.Address)
 		ctx.Next()
 	}
 }

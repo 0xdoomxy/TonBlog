@@ -10,6 +10,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
   width: 100%;
   height: 100%;
+  overflow: auto;
+  --sky: #2ae5dc;
+  --red: #f21f54;
+  --white: #fafafa;
+  --accent: var(--white);
+  --background: var(--white);
 }
 
 html{
@@ -19,10 +25,12 @@ html{
 #root{
   width:100%;
   height: 100%;
-
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+.maincolor{
+  background-color: #61dafb;
 }

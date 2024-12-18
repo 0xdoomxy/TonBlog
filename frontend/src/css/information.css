@@ -1,0 +1,38 @@
+
+
+.video-transition {
+    transition: transform 2s ease, opacity 2s ease;
+}
+
+.video-hidden{
+        transform: translateY(-100px); /* Move 100px up */
+        opacity: 0; /* Fade out */
+        display: none;
+}
+
+
+@keyframes arrowLeft {
+    from {
+        transform: translate(-50%, -50%);
+    }
+    to {
+        transform: translate(-150%, -50%);
+    }
+}
+
+.animate-arrow-left {
+    animation: moveLeft 5s forwards; /* Adjust duration as needed */
+}
+
+@keyframes arrowRight {
+    from {
+        transform: translate(-50%, -50%);
+    }
+    to {
+        transform: translate(-150%, -50%);
+    }
+}
+
+.animate-arrow-right {
+    animation: moveRight 5s forwards; /* Adjust duration as needed */
+}

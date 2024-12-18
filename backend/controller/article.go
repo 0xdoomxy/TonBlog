@@ -24,7 +24,7 @@ func GetArticle() *article {
 
 func (a *article) PublishArticle(ctx *gin.Context) {
 	// userid := context.GetInt64("userid")
-	var publickey, ok = ctx.Get("publickey")
+	var address, ok = ctx.Get("address")
 	if !ok {
 		ctx.JSON(200, utils.NewFailedResponse("未登录"))
 		return
@@ -38,7 +38,7 @@ func (a *article) PublishArticle(ctx *gin.Context) {
 	}
 	var article = &model.Article{}
 	//添加userid 到articleMap中,必须确保articleMap中没有userid字段
-	article.Creator = publickey.(string)
+	article.Creator = address.(string)
 	if form.Value["title"] == nil {
 		ctx.JSON(200, utils.NewFailedResponse("文章标题不存在"))
 		return
@@ -211,7 +211,7 @@ func (a *article) SearchArticleByPage(ctx *gin.Context) {
 }
 
 func (a *article) UpdateArticle(ctx *gin.Context) {
-	var publickey, ok = ctx.Get("publickey")
+	var address, ok = ctx.Get("address")
 	if !ok {
 		ctx.JSON(200, utils.NewFailedResponse("未登录"))
 		return
@@ -231,7 +231,7 @@ func (a *article) UpdateArticle(ctx *gin.Context) {
 	}
 	id, err = strconv.ParseUint(form.Value["id"][0], 10, 64)
 	article.ID = uint(id)
-	article.Creator = publickey.(string)
+	article.Creator = address.(string)
 	if form.Value["title"] == nil {
 		ctx.JSON(200, utils.NewFailedResponse("文章标题不存在"))
 		return
@@ -257,13 +257,13 @@ func (a *article) UpdateArticle(ctx *gin.Context) {
 	ctx.JSON(200, utils.NewSuccessResponse(nil))
 }
 func (a *article) DeleteArticle(ctx *gin.Context) {
-	var publickey, ok = ctx.Get("publickey")
+	var address, ok = ctx.Get("address")
 	if !ok {
 		ctx.JSON(200, utils.NewFailedResponse("未登录"))
 		return
 	}
 	article := &model.Article{
-		Creator: publickey.(string),
+		Creator: address.(string),
 	}
 	var err error
 	var articleid uint64

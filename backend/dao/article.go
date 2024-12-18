@@ -62,10 +62,13 @@ func GetArticle() *article {
 
 func init() {
 	articleContentEsIndex := viper.GetString("article.contentsearchindex")
-	db.GetMysql().AutoMigrate(&model.Article{})
+	var err error
+	err = db.GetMysql().AutoMigrate(&model.Article{})
+	if err != nil {
+		logrus.Panicf("auto migrate article table error:%s", err.Error())
+	}
 	//init elasticsearch index and mapper
 	es := db.GetElasticsearch()
-	var err error
 	var resp *esapi.Response
 	resp, err = es.Indices.Exists([]string{articleContentEsIndex})
 	if err != nil {
@@ -155,7 +158,7 @@ func (a *article) FindArticlePaticalById(ctx context.Context, id uint) (article 
 			}
 			return
 		}
-		e = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Select("id, title, creator, tags,created_at,images,is_repost,repost_url").Where("id = ?", id).First(inner_a).Error
+		e = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Select("id, title, creator, tags,created_at,images").Where("id = ?", id).First(inner_a).Error
 		if e != nil {
 			if errors.Is(e, gorm.ErrRecordNotFound) {
 				cache.Set(ctx, key, nil, time.Millisecond*time.Duration(a.cachems))
@@ -336,7 +339,7 @@ func (a *article) FindArticlePaticalByCreateTime(ctx context.Context, page, size
 			logrus.Errorf("failed to count article by create time failed: %s", e.Error())
 			return nil, e
 		}
-		e = storage.WithContext(ctx).Model(&model.Article{}).Select("id, title, creator, tags,created_at,images,is_repost,repost_url").Where("id > ? and id <= ?", (page-1)*size, page*size).Find(&inner_a.raw).Error
+		e = storage.WithContext(ctx).Model(&model.Article{}).Select("id, title, creator, tags,created_at,images").Where("id > ? and id <= ?", (page-1)*size, page*size).Find(&inner_a.raw).Error
 		if e != nil {
 			logrus.Errorf("find articles page:%d  size:%d failed:%s", page, size, e.Error())
 			return nil, e

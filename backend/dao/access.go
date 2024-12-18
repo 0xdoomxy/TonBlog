@@ -28,9 +28,12 @@ func GetAccess() *access {
 }
 
 func init() {
-	db.GetMysql().AutoMigrate(&model.Access{})
-	// init thr rabbit mq channel
 	var err error
+	err = db.GetMysql().AutoMigrate(&model.Access{})
+	if err != nil {
+		logrus.Panicf("auto migrate access table error:%s", err.Error())
+	}
+	// init thr rabbit mq channel
 	var channel *amqp.Channel
 	var articleExchange = viper.GetString("rabbitmq.articleexchange")
 	var accessQueue = viper.GetString("rabbitmq.accessqueue")

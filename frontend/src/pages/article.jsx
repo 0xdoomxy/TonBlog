@@ -1,16 +1,18 @@
-import React, {useEffect, useState} from "react";
+import React, {useContext, useEffect, useState} from "react";
 import {CustomerComment, Header} from "../components";
 import {useParams} from "react-router-dom";
 import MarkdownContext from "../components/markdown";
 import {LikeClient, ArticleClient, CommentClient, Authorization} from "../agent/agent";
-import {useTonWallet, useTonConnectUI} from "@tonconnect/ui-react";
 import {Tag, Modal, Input, InputNumber, Segmented, Button, BackTop, Avatar, Tooltip} from "antd";
 import {Comment} from "@ant-design/compatible";
 import {toast} from "react-toastify";
 import {FormatDateDistance} from "../util/time";
 import {UserOutlined, MoneyCollectOutlined} from "@ant-design/icons";
-
+import { motion, useScroll } from "framer-motion";
+import {Web3Wallet} from "../App";
+import "../css/progressbar.css";
 const ArticlePage = () => {
+    const {userAccount,searchWalletModal,setSearchWalletModal} = useContext(Web3Wallet);
     //文章唯一id
     const {articleId} = useParams();
     //标签颜色
@@ -19,8 +21,6 @@ const ArticlePage = () => {
     const [comments, setComments] = useState(new Map());
     //正在打开的评论栏
     const [isOpen, setIsOpen] = useState(-1);
-    const wallet = useTonWallet();
-    const [tonConnectUI] = useTonConnectUI();
     //是否正在打赏中
     const [rewardModal, setRewardModal] = useState(false);
     //打赏价格
@@ -32,26 +32,15 @@ const ArticlePage = () => {
         articleid: Number(articleId),
         topid: 0,
     })
-
+    //滚动页面
+    const { scrollYProgress } = useScroll()
     //reward
     function reward() {
-        if (wallet === undefined || wallet === null) {
+        if (userAccount === undefined || userAccount.length<=0) {
             toast.error("请先登陆");
             return;
         }
-        tonConnectUI.sendTransaction({
-            messages: [{
-                address: rewardInfo.address,
-                amount: rewardInfo.prices * 1e9,
-                validUntil: Math.floor(Date.now() / 1000) + 600
-            }]
-        }).then((res) => {
-            if (res.status) {
-                toast.success("打赏成功");
-            } else {
-                toast.error("打赏失败");
-            }
-        });
+
     }
 
     //TODO创建评论
@@ -251,19 +240,15 @@ const ArticlePage = () => {
 
     //TODO this function has delay to do
     useEffect(() => {
-        if (tonConnectUI.connected) {
-            //TODO dangerous: this function will be invalid when verify user to login spend long time
-            setTimeout(() => {
+        if (userAccount!=undefined&&userAccount.length>0) {
                 if (Authorization !== undefined) {
                     //是否已经点赞
                     existLike();
                     //完成登录时初始化评论信息
                     searchCommentByArticle();
                 }
-            }, 3000);
-
         }
-    }, [tonConnectUI.connected, Authorization])
+    }, [userAccount])
     //组件初始化的时候执行的函数
     useEffect(() => {
         //初始化文章信息
@@ -276,7 +261,7 @@ const ArticlePage = () => {
             {/* header for search */}
             <Header/>
             {/* body */}
-            <div className="w-full h-full pt-20 flex items-start ">
+            <div className="w-full h-full  pt-24 flex items-start ">
                 <Modal title="Ton" className=" z-0" onOk={() => {
                     reward()
                 }} open={rewardModal} okText="赞助" cancelText="离开" onCancel={() => {
@@ -317,34 +302,43 @@ const ArticlePage = () => {
                     {/* 简介 */}
                     <div className=" flex justify-between w-full ">
                         <div className="w-3/4 flex items-start flex-col">
-                            <h1 className="w-full text-6xl font-normal  max-h-32 line-clamp-2">{article.title}</h1>
+                            <h1 className="w-full lg:text-5xl text-3xl  font-normal  max-h-32 ">{article.title}</h1>
                             <div className=" flex justify-start items-center py-4 ">{article.tags.map((item, index) => {
-                                return (<Tag key={"tag" + index}
+                                return (<Tag className={"lg:text-2xl text-xl"} key={"tag" + index}
                                              color={labelColorList[index % labelColorList.length]}>{item}</Tag>)
                             })}</div>
-                            <div className="w-full text-xl font-serif py-4  truncate "
+                            <div className="w-full  text-xl lg:text-2xl font-serif py-4   truncate "
                                  id={article.creator}>{article.creator_name}</div>
-                            <div className=" text-base font-sans ">{article.create_time}</div>
+                            <div className=" text-base font-sans text-xl lg:text-2xl ">{article.create_time}</div>
                         </div>
                         <div className="w-1/4 h-48 flex justify-center flex-col">
                             <div
-                                className="h-1/2 border-x-2 border-t-2 text-sm  md:text-lg  w-full  font-serif flex items-center justify-center">
+                                style={{
+                                    color: "#222222",
+                                    fontFamily: "Basel,sans-serif"
+                                }}
+                                className="h-1/2 border-x-2 border-t-2 text-md  md:text-xl  w-full  font-serif flex items-center justify-center">
                                 浏览量:{article.access_num}
                             </div>
                             <div
-                                className=" h-1/2 border-2 w-full text-sm  md:text-lg   font-serif flex items-center justify-center">
+                                style={{
+                                    color: "#222222",
+                                    fontFamily: "Basel,sans-serif"
+                                }}
+                                className=" h-1/2 border-2 w-full text-md  md:text-xl  font-serif flex items-center justify-center">
                                 点赞量:{article.like_num}
                             </div>
                         </div>
                     </div>
                     <div className=" pt-20">
-                        <MarkdownContext context={article.content}/>
+                        <MarkdownContext  className={"text-xl"} context={article.content}/>
                     </div>
                     <div className=" w-full pt-24 pb-4 flex justify-end  ">
-                        {!tonConnectUI.connected ? <div className="w-1/3 flex justify-end items-center  ">
-                            <Button style={{backgroundColor: 'rgb(0, 152, 234)'}}
-                                    className=" hover:shadow-lg transition duration-500 ease-in-out  hover:-translate-y-1 hover:scale-105  rounded-full md:w-32 h-10 text-white "
-                                    onClick={() => tonConnectUI.openModal()}>Conntect Wallet</Button>
+                        {!userAccount? <div className="w-1/3 flex justify-end items-center  ">
+                            <motion.button
+                                style={{width: "150px", height: " 60px"}} whileHover={{scale: 1.1}}
+                                whileTap={{scale: 0.95}} className={"motion-button"}
+                                    onClick={() => setSearchWalletModal(!searchWalletModal)}>Connect Wallet</motion.button>
                         </div> : <div className=" w-1/3 flex flex-row justify-end items-center">
                             <div className=" px-2 cursor-pointer ">
                                 {!article.isLike ? <svg onClick={() => {
@@ -375,7 +369,7 @@ const ArticlePage = () => {
                         </div>}
 
                     </div>
-                    {tonConnectUI.connected && <>
+                    {userAccount!=null&&userAccount.length>0 && <>
                         <div className="w-full flex flex-col">
                             <div className=" w-full flex flex-col">
                                 <label htmlFor="message"
@@ -401,6 +395,10 @@ const ArticlePage = () => {
                     </>}
                 </div>
                 <div className=" w-1/6"></div>
+                <motion.div
+                    className={"progress-bar"}
+                    style={{scaleX: scrollYProgress}}
+                />
             </div>
         </div>
     )

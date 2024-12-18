@@ -99,7 +99,10 @@ func (u *user) UpdateUser(ctx context.Context, user *model.User) (err error) {
 }
 
 func init() {
-	db.GetMysql().AutoMigrate(&model.User{})
+	err := db.GetMysql().AutoMigrate(&model.User{})
+	if err != nil {
+		logrus.Panicf("auto migrate user table error:%s", err.Error())
+	}
 }
 
 // should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix

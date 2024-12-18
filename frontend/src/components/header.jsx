@@ -1,17 +1,28 @@
-import React, {useEffect, useState} from 'react';
-
-import TonAvatar from './avatar';
-import {useTonWallet, useTonConnectUI, TonConnectButton} from '@tonconnect/ui-react';
+import React, {useContext, useEffect, useState} from 'react';
 import {useNavigate} from "react-router-dom";
 import {Search} from './search';
-import {Modal, AutoComplete, List, Skeleton, Divider, Tag} from 'antd';
+import {AutoComplete, Divider, List, Modal, Skeleton, Tag} from 'antd';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import Constants from '../util/constants';
 import {ArticleClient} from '../agent/agent';
 import {toast} from 'react-toastify';
+import {MenuToggle} from './menutoggle';
+import {useMenuAnimation} from '../hooks/menuanimation';
+import "../css/header.css"
+import {Web3Wallet} from "../App";
+import {motion} from "framer-motion";
+import {formatAddress} from "../util/web3.js";
+import Avatar from "./avatar.jsx";
 
 const Header = () => {
-
+    const {
+        searchWalletModal,
+        setSearchWalletModal,
+        selectedWallet,
+        setSelectedWallet,
+        userAccount,
+        setUserAccount
+    } = useContext(Web3Wallet);
     const labelColorList = ["blue", "purple", "cyan", "green", "magenta", "pink", "red", "orange", "yellow", "volcano", "geekblue", "lime", "gold"];
     //是否需要更换header显示
     const [changeHeader, setChangeHeader] = useState(false);
@@ -22,6 +33,7 @@ const Header = () => {
     const [keyword, setKeyword] = useState("");
     //小屏幕点击事件，用来显示菜单栏
     const [showSmallNav, setShowSmallNav] = useState(false);
+    const scope = useMenuAnimation(showSmallNav);
     const [total, setTotal] = useState(0);
     useEffect(() => {
         if (keyword !== null && keyword !== undefined && keyword !== "") {
@@ -30,17 +42,19 @@ const Header = () => {
     }, [keyword])
     //搜索到的文章
     const [searchArticles, setSearchArticles] = useState([]);
-    const navItems = [{
-        Name: "主页",
-        Target: "/"
-    }, {
-        Name: "作者简介",
-        Target: "/about"
-    }]
-    //tron 钱包
-    const wallet = useTonWallet();
-    //tron 连接
-    const [tonConnectUI] = useTonConnectUI();
+    const navItems = [
+        {
+            Name: "主页",
+            Target: "/"
+        },
+        {
+            Name: '空投',
+            Target: '/airport'
+        },
+        {
+            Name: "作者简介",
+            Target: "/about"
+        }]
 
     //搜索文章(isContinue:是否是跟进页数)
     function searchArticle(page, isContinue) {
@@ -191,21 +205,27 @@ const Header = () => {
                     </div>
                 </div>
             </Modal>
-            <div className="   bg-slate-50 w-full border-b-2 h-12 flex justify-evenly md:justify-center items-center ">
+            <div
+                className={`bg-slate-50  w-full border-b-2  flex justify-evenly md:justify-center items-center ${changeHeader ? "h-12" : "h-20"}`}>
                 {!changeHeader && (<div className=" w-1/6 md:w-full h-full flex items-center justify-center">
                     <div className=" w-1/4 flex justify-center   items-center py-2">
-                        <h1 className=" flex align-middle font-serif text-wrap h-full text-xl md:text-3xl cursor-pointer pl-2 "
-                            onClick={() => {
-                                window.location.href = "https://github.com/0xdoomxy"
-                            }}>0xdoomxy</h1>
+                        <div className=" flex align-middle font-serif text-3xl lg:text-4xl h-full cursor-pointer lg:pl-2 pl-24 "
+                             onClick={() => {
+                                 window.location.href = "https://github.com/0xdoomxy"
+                             }}>0xdoomxy
+                        </div>
                     </div>
-                    <div className="w-1/2   hidden  md:flex justify-start items-center">
+                    <div className=" w-1/2   hidden  md:flex justify-start items-center">
                         <div className=' w-2/3 flex flex-row justify-evenly'>
                             {navItems.map((item, index) => (
                                 <div onClick={() => {
                                     navigate(item.Target)
                                 }}
-                                     className=" hover:-translate-y-1 duration-500  text-center text-lg px-4 lg:px-8 cursor-pointer "
+                                     style={{
+
+                                         color: "#222222",
+                                         fontFamily: "Basel,sans-serif"
+                                     }}   className=" hover:-translate-y-1 duration-500  text-center text-xl  px-4 lg:px-8 cursor-pointer "
                                      key={"nav" + index}>{item.Name}</div>
                             ))}
                         </div>
@@ -221,10 +241,14 @@ const Header = () => {
                             </div>
                         </div>
                     </div>
-                    <div className=" hidden md:flex w-1/8 justify-evenly ">{tonConnectUI.connected ?
-                        <TonAvatar wallet={wallet} disconnect={() => {
-                            tonConnectUI.disconnect()
-                        }}/> : <TonConnectButton/>}</div>
+                    <div
+                        className=" hidden md:flex w-1/8 justify-evenly ">{userAccount != null && userAccount.length > 0 ?
+                        <Avatar/> :
+                        <motion.button style={{width: "150px", height: " 60px"}} whileHover={{scale: 1.1}}
+                                       whileTap={{scale: 0.95}} className={"motion-button "}
+                                       onClick={() => {
+                                           setSearchWalletModal(!searchWalletModal)
+                                       }}>Connect Wallet</motion.button>}</div>
                 </div>)}
                 {changeHeader &&
                     <div className="w-full h-full hidden md:flex">
@@ -240,7 +264,7 @@ const Header = () => {
                     </div>
                 }
                 {/* 小屏幕显示 */}
-                <div className="w-full h-full md:hidden">
+                <div className="w-full h-2/3 md:hidden">
                     <Search onKeyDown={(event) => {
                         if (event.keyCode !== 13) {
                             return;
@@ -251,26 +275,20 @@ const Header = () => {
                         navigate(`/search?keyword=${event.target.value}`,)
                     }}/>
                 </div>
-                <div className=" flex  pl-12 justify-center items-center  w-1/3 md:hidden ">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}
-                         stroke="currentColor" className="size-6 cursor-pointer" onClick={() => {
-                        setShowSmallNav(!showSmallNav)
-                    }}>
-                        <path strokeLinecap="round" strokeLinejoin="round"
-                              d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5"/>
-                    </svg>
+                <div ref={scope} className=" flex  md:pr-4 lg:pl-12  justify-center items-center  w-1/3 md:hidden ">
+                    <nav className="menu">
+                        <ul className={"flex items-center justify-center flex-col"}>
+                            {navItems.map((item, index) => (
+                                <li onClick={() => {
+                                    navigate(item.Target)
+                                }}
+                                    key={"smallnav" + index}>{item.Name}</li>
+                            ))}
+                        </ul>
+                    </nav>
+                    <MenuToggle toggle={() => setShowSmallNav(!showSmallNav)}/>
                 </div>
             </div>
-            {showSmallNav && <div
-                className="md:hidden w-full h-screen backdrop-blur absolute top-12    flex   flex-col justify-start items-center">
-                {navItems.map((item, index) => (
-                    <div onClick={() => {
-                        navigate(item.Target)
-                    }}
-                         className="w-full border-y hover:decoration-sky-700 hover:underline  text-center text-lg px-8 cursor-pointer "
-                         key={"smallnav" + index}>{item.Name}</div>
-                ))}
-            </div>}
         </div>
     )
 }

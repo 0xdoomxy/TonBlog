@@ -18,7 +18,7 @@ func GetComment() *comment {
 }
 
 func (c *comment) CreateComment(ctx *gin.Context) {
-	creator, ok := ctx.Get("publickey")
+	creator, ok := ctx.Get("address")
 	if !ok {
 		ctx.JSON(401, utils.NewFailedResponse("未登录"))
 		return
@@ -62,7 +62,7 @@ func (c *comment) FindCommentByArticle(ctx *gin.Context) {
 }
 
 func (c *comment) DeleteComment(ctx *gin.Context) {
-	creator := ctx.GetString("publickey")
+	creator := ctx.GetString("address")
 	articleidStr := ctx.Query("articleid")
 	articleid, err := strconv.ParseUint(articleidStr, 10, 64)
 	if err != nil {

@@ -181,7 +181,10 @@ func (trs *TagRelationships) MarshalBinary() ([]byte, error) {
 }
 
 func init() {
-	db.GetMysql().AutoMigrate(&model.TagRelationship{})
+	err := db.GetMysql().AutoMigrate(&model.TagRelationship{})
+	if err != nil {
+		logrus.Panicf("auto migrate tag_relationship table error:%s", err.Error())
+	}
 }
 
 // should replace the origin cacheKey which should assign the value by user. then we pass the tag table name to assign the cache prefix

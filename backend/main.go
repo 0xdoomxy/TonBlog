@@ -110,11 +110,8 @@ func bindCommentRoutes(engine *gin.Engine) {
 // TODO test the proof is true
 func bindUserRoutes(engine *gin.Engine) {
 	router := engine.Group("/user")
-	router.POST("/proof", func(ctx *gin.Context) {
-		controller.GetUser().ProofHandler(ctx)
-	})
-	router.GET("/generate", func(ctx *gin.Context) {
-		controller.GetUser().PayloadHandler(ctx)
+	router.POST("/login", func(ctx *gin.Context) {
+		controller.GetUser().LoginHandler(ctx)
 	})
 }
 

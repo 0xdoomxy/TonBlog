@@ -22,7 +22,10 @@ func GetLike() *like {
 }
 
 func init() {
-	db.GetMysql().AutoMigrate(&model.Like{})
+	err := db.GetMysql().AutoMigrate(&model.Like{})
+	if err != nil {
+		logrus.Panicf("auto migrate like table error:%s", err.Error())
+	}
 	likeDao = newLikeDao()
 }
 

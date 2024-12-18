@@ -2,7 +2,7 @@
   word-break: break-word;
   line-height: 1.75;
   font-weight: 400;
-  font-size: 16px;
+  font-size: 38px; /* 原来是34.2px，增加3.8px */
   overflow-x: hidden;
   color: #333;
 }
@@ -20,7 +20,7 @@
 }
 
 .markdown-body h1 {
-  font-size: 24px;
+  font-size: 55px; /* 原来是46.68px，增加8.32px */
   margin-bottom: 5px;
 }
 
@@ -29,7 +29,7 @@
 .markdown-body h4,
 .markdown-body h5,
 .markdown-body h6 {
-  font-size: 20px;
+  font-size: 50px; /* 原来是41.4px，增加8.6px */
 }
 
 .markdown-body h2 {
@@ -38,7 +38,7 @@
 }
 
 .markdown-body h3 {
-  font-size: 18px;
+  font-size: 48px; /* 原来是38.76px，增加9.24px */
   padding-bottom: 0;
 }
 
@@ -50,6 +50,7 @@
   line-height: inherit;
   margin-top: 22px;
   margin-bottom: 22px;
+  font-size: 23px; /* 增加段落文字的字体大小 */
 }
 
 .markdown-body img {
@@ -72,7 +73,7 @@
   overflow-x: auto;
   background-color: #fff5f5;
   color: #ff502c;
-  font-size: 0.87em;
+  font-size: 21px; /* 原来是16.84px，增加4.16px */
   padding: 0.065em 0.4em;
 }
 
@@ -84,7 +85,7 @@
 }
 
 .markdown-body pre > code {
-  font-size: 12px;
+  font-size: 25px; /* 原来是20.84px，增加4.16px */
   padding: 15px 12px;
   margin: 0;
   word-break: normal;
@@ -107,7 +108,7 @@
 
 .markdown-body table {
   display: inline-block !important;
-  font-size: 12px;
+  font-size: 25px; /* 原来是20.84px，增加4.16px */
   width: auto;
   max-width: 100%;
   overflow: auto;
@@ -172,16 +173,20 @@
 
 .markdown-body ol li {
   padding-left: 6px;
+  font-size: 25px;
 }
 
 @media (max-width: 720px) {
   .markdown-body h1 {
-    font-size: 24px;
+    font-size: 55px;
   }
   .markdown-body h2 {
-    font-size: 20px;
+    font-size: 50px;
   }
   .markdown-body h3 {
-    font-size: 18px;
+    font-size: 48px;
+  }
+  .markdown-body p {
+    font-size: 24px; /* 增加段落文字的字体大小 */
   }
 }

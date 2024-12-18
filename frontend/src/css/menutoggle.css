@@ -1,0 +1,24 @@
+
+
+.togglebutton {
+    outline: none;
+    border: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    cursor: pointer;
+    border-radius: 50%;
+    background: #fff;
+    padding: 10px;
+}
+.togglebutton path {
+    fill: var(--background);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    -webkit-border-radius: 1ex;
+}
+
+::-webkit-scrollbar-corner {
+    background: #fff3;
+}

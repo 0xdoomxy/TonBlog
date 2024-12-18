@@ -38,8 +38,6 @@ const HomePage = () => {
                 toast.error(msg);
                 return;
             }
-
-            console.log(data.data);
             setAllTags(data.data);
         })
     }
@@ -141,9 +139,8 @@ const HomePage = () => {
         <div className=" w-full h-full">
             <BackTop/>
             <Header/>
-            <div className=" w-full    flex justify-center items-start pt-12">
-                <div className=" w-1/10"></div>
-                <div className=" w-4/5 pt-8 h-full">
+            <div  className=" w-full  flex justify-center items-center  pt-24">
+                <div  className="w-4/5 pt-8   ">
                     <div className="grid grid-flow-row grid-cols-3  md:grid-cols-6 gap-10">
                         {allTags.map((item, index) => {
                             if (index >= curTagViewNum) {
@@ -151,19 +148,22 @@ const HomePage = () => {
                             }
                             return (
                                 <div
-                                    className=" my-3 min-h-8 h-8  min-w-24 max-w-28 justify-center rounded-xl flex  text-center text-lg cursor-pointer  "
+                                    className="  my-3 min-h-8 h-8  min-w-24 max-w-28 justify-center rounded-xl flex  text-center text-lg cursor-pointer  "
                                     onClick={() => {
                                         navigate(`/articles/tag?tag=${item.Name}`)
                                     }} key={"tag" + item.Name}>
-                                    <p className="hover:text-blue-500 text-sm font-semibold">{item.Name}</p>
+                                    <p style={{
+                                        color: "#222222",
+                                        fontFamily: "Basel,sans-serif"
+                                    }} className=" lg:text-md hover:text-blue-500 text-xl ">{item.Name}</p>
                                     <div
                                         className="min-w-6 min-h-3 h-4 bg-stone-200  text-xs rounded-lg ">{item.ArticleNum}</div>
                                 </div>
                             )
                         })}
                     </div>
-                    <div className="w-full flex justify-end cursor-pointer" onClick={showAllTagsOnclick}>
-                        {openAllTags ?
+                    {defaultTagsViewNum<allTags.length&&<div className="w-full flex justify-end cursor-pointer" onClick={showAllTagsOnclick}>
+                        { openAllTags ?
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}
                                  stroke="currentColor" className="size-6">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5"/>
@@ -174,7 +174,7 @@ const HomePage = () => {
                                     <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
                                 </svg>
                             </div>}
-                    </div>
+                    </div>}
                     <div className=" items-center justify-evenly flex flex-col ">
                         <div className=" w-full mt-8">
                             <div className="w-full flex justify-between items-center py-6 ">
@@ -195,20 +195,23 @@ const HomePage = () => {
                                 className={`px-2 hover:shadow-lg  transition duration-500 ease-in-out hover:-translate-y-1 hover:scale-105  my-3 min-h-32  border-2 w-full flex  justify-between rounded-md`}
                                 key={"newArticle" + index}>
                                 <div className="flex w-2/3 flex-col justify-center">
-                                    <p className=" font-serif md:text-2xl py-1">{item.title}</p>
+                                    <p className=" font-serif lg:text-3xl text-2xl py-1">{item.title}</p>
                                     <div className=" flex py-1">
                                         {item.tags !== null && item.tags instanceof Array && item.tags.length > 0 && item.tags.map((tag, index) => (
-                                            <Tag className=" text-center"
+                                            <Tag className=" text-center text-xl lg:text-2xl"
                                                  color={labelColorList[index % labelColorList.length]}>{tag}</Tag>))}
                                     </div>
-                                    <div className=" font-normal text-md truncate">{item.creator_name}</div>
-                                    <div className=" font-normal text-sm">{item.create_time}</div>
+                                    <div className=" font-normal text-md lg:text-xl truncate">{item.creator_name}</div>
+                                    <div className=" font-normal text-md lg:text-xl">{item.create_time}</div>
                                 </div>
                                 <div className=" flex justify-center w-1/3 items-center flex-col">
-                                    <button className=" w-20 h-12 border-2 rounded-xl hover:bg-blue-100"
+                                    <button style={{
+                                        color: "#222222",
+                                        fontFamily: "Basel,sans-serif"
+                                    }}  className=" w-20 h-12 border-2 rounded-xl text-md lg:text-xl hover:bg-blue-100"
                                             onClick={() => navigate("/article/" + item.id)}>阅读
                                     </button>
-                                    <div className=" font-serif text-ellipsis text-sm">浏览量:{item.access_num}</div>
+                                    <div className=" font-serif text-ellipsis text-md lg:text-xl">浏览量:{item.access_num}</div>
                                 </div>
                             </div>))}
 
@@ -229,28 +232,31 @@ const HomePage = () => {
                                 </div>
                             </div>
                             {hotAriticles.map((item, index) => (<div
-                                className="px-2 hover:shadow-lg transition duration-500 ease-in-out  hover:-translate-y-1 hover:scale-105  my-3 min-h-32  border-2 w-full flex  justify-between rounded-md"
+                                className="  px-2 hover:shadow-lg transition duration-500 ease-in-out  hover:-translate-y-1 hover:scale-105  my-3 min-h-32  border-2 flex  justify-between rounded-md"
                                 key={"newArticle" + index}>
                                 <div className="flex flex-col w-2/3 justify-center ">
-                                    <p className=" font-serif md:text-2xl py-1">{item.title}</p>
+                                    <p className=" font-serif lg:text-3xl text-2xl py-1">{item.title}</p>
                                     <div className=" flex py-1">
                                         {item.tags != null && item.tags instanceof Array && item.tags.length > 0 && item.tags.map((tag, index) => (
-                                            <Tag color={labelColorList[index % labelColorList.length]}>{tag}</Tag>))}
+                                            <Tag className={"text-xl lg:text-2xl"} color={labelColorList[index % labelColorList.length]}>{tag}</Tag>))}
                                     </div>
-                                    <div className=" font-normal text-md truncate">{item.creator_name}</div>
-                                    <div className=" font-normal text-sm">{item.create_time}</div>
+                                    <div className=" font-normal text-md lg:text-xl truncate">{item.creator_name}</div>
+                                    <div className=" font-normal text-md lg:text-xl">{item.create_time}</div>
                                 </div>
                                 <div className=" flex justify-center w-1/3 items-center flex-col">
-                                    <button className=" w-20 h-12 border-2 rounded-xl hover:bg-blue-100"
+                                    <button style={{
+                                        color: "#222222",
+                                        fontFamily: "Basel,sans-serif"
+                                    }} className=" text-md lg:text-xl w-20 h-12 border-2 rounded-xl hover:bg-blue-100"
                                             onClick={() => navigate("/article/" + item.id)}>阅读
                                     </button>
-                                    <div className=" font-serif text-ellipsis text-sm">浏览量:{item.access_num}</div>
+                                    <div className=" font-serif text-ellipsis text-md lg:text-xl">浏览量:{item.access_num}</div>
                                 </div>
                             </div>))}
+
                         </div>
                     </div>
                 </div>
-                <div className=" w-1/10"></div>
             </div>
             <div className=" flex w-full border-t-2  bg-slate-50 justify-center items-center ">
                 <div className=" w-1/5"></div>

@@ -85,9 +85,9 @@ const TagDetails = () => {
                                                                                             className=" w-20 h-20"/>
             </div> : <div className='flex justify-center items-center'>
                 <div className=' w-1/5 h-full'></div>
-                {isEmpty ? <div className=' h-screen flex justify-center items-center'><Empty className='pt-12'
+                {isEmpty ? <div className=' h-screen flex justify-center items-center'><Empty className=' pt-24'
                                                                                               image={Empty.PRESENTED_IMAGE_SIMPLE}/>
-                </div> : <div className='w-3/5 h-full pt-12'>
+                </div> : <div className='w-3/5 h-full  pt-24'>
                     <div className=" w-full mt-8">
                         {articlesByTag.map((item, index) => (<div
                             className={`px-2 hover:shadow-lg  transition duration-500 ease-in-out hover:-translate-y-1 hover:scale-105  my-3 min-h-32  border-2 w-full flex  justify-between rounded-md`}
