@@ -128,13 +128,13 @@ const AirPort = () => {
     const defaultColumns = [
         {
             title: '进度',
-            editable: true,
             render:(_,record)=>{
                 let start =record.start_time;
                 let end =record.end_time;
                 let now = Date.now();
+                let p =Math.floor((now-start)/(end-start)*100);
                 return (
-                    <Progress percent={new Number((start-now)/(end-start))} percentPosition={{align: 'start', type: 'outer'}}/>
+                    <Progress percent={p} percentPosition={{ align: 'center', type: 'inner' }} size={[100, 20]} />
                 );
             }
         },
