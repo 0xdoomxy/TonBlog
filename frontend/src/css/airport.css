@@ -1,13 +1,5 @@
 body {
     --blue: #8855ff;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
 }
 
 .menu .box {
@@ -39,8 +31,7 @@ li {
     width: 80%;
     height: 100%;
     background: white;
-    overflow: hidden;
-    /*border-radius: 10px;*/
+    /*border-radius: 2px;*/
     /*box-shadow: 0 1px 1px hsl(0deg 0% 0% / 0.075),*/
     /*0 2px 2px hsl(0deg 0% 0% / 0.075), 0 4px 4px hsl(0deg 0% 0% / 0.075),*/
     /*0 8px 8px hsl(0deg 0% 0% / 0.075), 0 16px 16px hsl(0deg 0% 0% / 0.075);*/
@@ -51,9 +42,9 @@ li {
 .airpointwindow nav {
     background: #fdfdfd;
     padding: 5px 5px 0;
-    border-radius: 10px;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    /*border-radius: 10px;*/
+    /*border-bottom-left-radius: 0;*/
+    /*border-bottom-right-radius: 0;*/
     border-bottom: 1px solid #eeeeee;
     height: 50px;
 }
@@ -74,8 +65,32 @@ li {
     margin: 0;
     font-family: "Poppins", sans-serif;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 30px;
 }
+
+
+.airpointwindow .switch {
+    width: 80px;
+    height: 40px;
+    background-color:rgb(42, 229, 220);
+    display: flex;
+    justify-content: flex-start;
+    border-radius: 50px;
+    padding: 7px;
+    cursor: pointer;
+}
+
+.airpointwindow .switch[data-isOn="true"] {
+    justify-content: flex-end;
+}
+
+.airpointwindow .handle {
+    width: 40px;
+    height: 25px;
+    background-color: var(--accent);
+    border-radius: 40px;
+}
+
 
 .airpointwindow nav ul {
     display: flex;
@@ -83,9 +98,7 @@ li {
 }
 
 .airpointwindow nav li {
-    border-radius: 5px;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    border-radius: 10px 10px 0 0;
     width: 100%;
     padding: 10px 15px;
     position: relative;
@@ -99,7 +112,6 @@ li {
     min-width: 0;
     position: relative;
     user-select: none;
-    border-radius: 10px;
     box-shadow: 0 1px 1px hsl(0deg 0% 0% / 0.075),
     0 2px 2px hsl(0deg 0% 0% / 0.075), 0 4px 4px hsl(0deg 0% 0% / 0.075),
     0 8px 8px hsl(0deg 0% 0% / 0.075), 0 16px 16px hsl(0deg 0% 0% / 0.075);
@@ -110,8 +122,8 @@ li {
     bottom: -1px;
     left: 0;
     right: 0;
-    height: 1px;
-    background: var(--accent);
+    height: 3px;
+    background: var(--blue);
 }
 
 .airpointwindow nav li.selected {

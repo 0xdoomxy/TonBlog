@@ -113,10 +113,10 @@ export const DiscoverWalletProviders = (props) => {
                 </motion.div>
             </div>
             <div className={"flex justify-center items-center flex-col"}>{providers?.map((provider) => (
-                <motion.button className={"w-full  my-1 motion-button"} onClick={() => handleConnect(provider)}
+                <motion.button style={{width:"100%",height:"100%"}} className={"w-full h-full  my-1 motion-button"} onClick={() => handleConnect(provider)}
                                whileHover={{scale: 1.1}}
                                whileTap={{scale: 0.95}}>
-                    <div className={"flex pl-2 justify-start items-center"}>
+                    <div className={" flex pl-2 justify-start items-center"}>
                         <img src={provider.info.icon} style={{width: "40px", height: "40px"}}
                              alt={provider.info.name}/>
                         <div className={"pl-4"} style={{

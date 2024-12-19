@@ -1,6 +1,8 @@
 import React, {useContext, useEffect, useRef, useState} from 'react';
-import {Form, Input, Progress, Table} from 'antd';
-import { motion } from 'framer-motion';
+import {Form, Input, Progress, Rate, Statistic, Table, Tag, Tooltip} from 'antd';
+import {motion} from 'framer-motion';
+import {InfoCircleOutlined} from "@ant-design/icons";
+import {Star} from "./index.js";
 const EditableContext = React.createContext(null);
 const EditableRow = ({index, ...props}) => {
     const [form] = Form.useForm();
@@ -12,6 +14,12 @@ const EditableRow = ({index, ...props}) => {
         </Form>
     );
 };
+const spring = {
+    type: "spring",
+    stiffness: 700,
+    damping: 30
+};
+
 const EditableCell = ({
                           title,
                           editable,
@@ -91,7 +99,8 @@ const RunningAirport = (props) => {
             tag:"区块链,AI",
             financing_balance: "3000$",
             financing_from:"a16z,binance",
-            task_type:"拉人头,交互"
+            task_type:"拉人头,交互",
+            weight:5,
         },
         {
             key: '1',
@@ -102,7 +111,8 @@ const RunningAirport = (props) => {
             tag:"区块链,AI",
             financing_balance: "3000$",
             financing_from:"a16z,binance",
-            task_type:"拉人头,交互"
+            task_type:"拉人头,交互",
+            weight: 3,
         },
     ]);
     //TODO
@@ -115,16 +125,22 @@ const RunningAirport = (props) => {
         const newData = dataSource.filter((item) => item.key !== key);
         setDataSource(newData);
     }
+    //TODO
+    const handleIntoMy= (key)=>{
+        const newData = dataSource.filter((item) => item.key !== key);
+        setDataSource(newData);
+    }
     const defaultColumns = [
         {
             title: '进度',
+            align:"center",
             render: (_, record) => {
                 let start = record.start_time;
                 let end = record.end_time;
                 let now = Date.now();
                 let p = Math.floor((now - start) / (end - start) * 100);
                 return (
-                    <Progress percent={p} percentPosition={{ align: 'center', type: 'inner' }} size={[100, 20]} />
+                    <Progress format={(percent)=>`空投进度: ${percent}%`} percent={p} percentPosition={{ align: 'center', type: 'outer' }} size={[100, 30]}/>
                 );
             }
         },
@@ -132,11 +148,13 @@ const RunningAirport = (props) => {
             title: '项目名',
             dataIndex: 'name',
             editable: true,
+            align:"center",
         },
         {
             title: '官网地址',
             dataIndex: 'address',
             editable: true,
+            align:"center",
             render: (_, record) => {
                 return <a href={record.address}>官网地址</a>
             }
@@ -145,46 +163,113 @@ const RunningAirport = (props) => {
             title: '赛道',
             dataIndex: 'tag',
             editable: true,
+            align:"center",
+            render: (_, record) => {
+              return   <div className={"flex  justify-center items-center"}>
+                    {record.tag.split(',').map((tag) => {
+                        let color = tag.length > 5 ? 'geekblue' : 'green';
+                        if (tag === 'loser') {
+                            color = 'volcano';
+                        }
+                        return (
+                            <Tag color={color} key={tag}>
+                                {tag.toUpperCase()}
+                            </Tag>
+                        );
+                    })}
+                </div>
+            }
         },
         {
             title: '融资金额',
             dataIndex: 'financing_balance',
             editable: true,
+            align:"center",
+            render:(_,record)=>{
+                return (
+                    <Statistic  value={record.financing_balance} />
+                )
+            }
         },
         {
             title: '融资来源方',
             dataIndex: 'financing_from',
             editable: true,
-        },
-        {
-            title: '教程',
-            dataIndex: 'teaching',
-            editable: true,
-            render: (_, record) => {
-                return <a href={record.teaching}>教程链接</a>
+            align:"center",
+            render:(_,record)=>{
+                return   <div className={"flex  justify-center items-center"}>
+                    {record.financing_from.split(',').map((tag) => {
+                        let color = tag.length > 5 ? 'geekblue' : 'volcano';
+                        return (
+                            <Tag color={color} key={tag}>
+                                {tag.toUpperCase()}
+                            </Tag>
+                        );
+                    })}
+                </div>
             }
         },
         {
             title: '任务类型',
             dataIndex: 'task_type',
-            editable: true
+            editable: true,
+            align:"center",
+            render:(_,record)=>{
+                return   <div className={"flex  justify-center items-center"}>
+                    {record.task_type.split(',').map((tag) => {
+                        let color = tag.length > 5 ? 'magenta' : 'purple';
+                        return (
+                            <Tag color={color} key={tag}>
+                                {tag.toUpperCase()}
+                            </Tag>
+                        );
+                    })}
+                </div>
+            }
+        },
+        {
+            title:<Tooltip placement={"rightTop"} color={"rgba(116,112,112,0.88)"} title={"该空投在平台收集的空投中的评分"}>空投质量<InfoCircleOutlined  className={"relative  bottom-3 left-2"}/></Tooltip>,
+            dataIndex: 'weight',
+            align:"center",
+            render:(_,record)=>{
+                return (
+                    <Star number={record.weight}/>
+                )
+            }
+        },
+        {
+            title: '教程',
+            dataIndex: 'teaching',
+            editable: true,
+            align:"center",
+            render: (_, record) => {
+                return <a href={record.teaching}>教程链接</a>
+            }
+        },
+        {
+            title: '',
+            dataIndex: 'enter',
+            align:"center",
+            onHeaderCell:(column)=>{
+                return  {
+                    colSpan: 0,
+                }
+            },
+            render: (_, record) => {
+                return <div className="switch" data-isOn={false} onClick={()=>{handleIntoMy(record.key)}}>
+                    <motion.div style={{ fontFamily: "sofia-pro, sans-serif", fontWeight: 400,fontStyle: "normal"}} className="handle flex items-center justify-center lg:text-md text-sm " layout transition={spring}>开始</motion.div>
+                </div>
+            }
+
         },
         {
             title: '进展',
             dataIndex: 'operation',
+            hidden: !isAdmin,
+            colSpan:0,
             render: (_, record) =>
                 dataSource.length >= 1 ? (
                     <div className={"w-full justify-center items-center flex-col"}>
-                        <motion.button whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            style={{ width: "80px", height: "40px" }}
-                            transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                            className={"motion-button  px-1"} title="今日完成"
-                            key={record.key}
-                            onClick={() => handleDelete(record.key)}
-                        >
-                            <a>今日完成</a>
-                        </motion.button>
                         {isAdmin &&
                             <motion.button whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
@@ -206,7 +291,6 @@ const RunningAirport = (props) => {
                                 <a>删除空投</a>
                             </motion.button>}
                     </div>
-
                 ) : null,
         },
     ];
@@ -246,7 +330,7 @@ const RunningAirport = (props) => {
         };
     });
     return (
-        <div className={"w-full h-full flex justify-center items-center flex-col"}>
+        <div className={" w-full h-full flex justify-center items-center flex-col"}>
             {isAdmin && <div className={"w-full h-full"}>
                 <div className={"w-full items-center justify-start flex pb-4 pl-4"}>
                     <motion.button
@@ -261,13 +345,13 @@ const RunningAirport = (props) => {
                 </div>
             </div>
             }
-            <div>
+            <div className={"w-full"}>
                 <Table
                     tableLayout={"auto"}
                     components={components}
                     rowClassName={() => 'editable-row'}
                     bordered
-                    className={"w-full flex justify-center items-center h-full"}
+                    className={"w-full min-w-full flex justify-center items-center h-full"}
                     dataSource={dataSource}
                     columns={columns}
                 />

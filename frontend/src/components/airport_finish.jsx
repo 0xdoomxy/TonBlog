@@ -1,7 +1,9 @@
 
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Skeleton, Form, Input, Progress, Table,InputNumber } from 'antd';
+import {Skeleton, Form, Input, Progress, Table, InputNumber, Tag, Tooltip, Statistic} from 'antd';
 import { motion } from 'framer-motion';
+import {ExclamationCircleOutlined, InfoCircleOutlined} from "@ant-design/icons";
+import {Star} from "./index.js";
 const EditableContext = React.createContext(null);
 const EditableRow = ({ index, ...props }) => {
     const [form] = Form.useForm();
@@ -122,13 +124,14 @@ const FinishAirport = (props) => {
     const defaultColumns = [
         {
             title: '进度',
+            align:"center",
             render: (_, record) => {
                 let end = record.end_time;
                 let final = record.final_time;
                 let now = Date.now();
                 let p = Math.floor((now - end) / (final - end) * 100);
                 return (
-                    <Progress percent={p} percentPosition={{ align: 'center', type: 'inner' }} size={[100, 20]} />
+                    <Progress format={(percent)=>`领取进度: ${percent}%`} percent={p} percentPosition={{ align: 'center', type: 'outer' }} size={[100, 30]}/>
                 );
             }
         },
@@ -136,11 +139,13 @@ const FinishAirport = (props) => {
             title: '项目名',
             dataIndex: 'name',
             editable: true,
+            align:"center",
         },
         {
             title: '官网地址',
             dataIndex: 'address',
             editable: true,
+            align:"center",
             render: (_, record) => {
                 return <a href={record.address}>官网地址</a>
             }
@@ -149,21 +154,52 @@ const FinishAirport = (props) => {
             title: '赛道',
             dataIndex: 'tag',
             editable: true,
+            align:"center",
+            render:(_,record)=>{
+                return   <div className={"flex  justify-center items-center"}>
+                    {record.tag.split(',').map((tag) => {
+                        let color = tag.length > 5 ? 'geekblue' : 'green';
+                        if (tag === 'loser') {
+                            color = 'volcano';
+                        }
+                        return (
+                            <Tag color={color} key={tag}>
+                                {tag.toUpperCase()}
+                            </Tag>
+                        );
+                    })}
+                </div>
+            }
         },
         {
             title: '融资金额',
             dataIndex: 'financing_balance',
             editable: true,
+            align:"center",
         },
         {
             title: '融资来源方',
             dataIndex: 'financing_from',
             editable: true,
+            align:"center",
+            render:(_,record)=>{
+                return   <div className={"flex  justify-center items-center"}>
+                    {record.financing_from.split(',').map((tag) => {
+                        let color = tag.length > 5 ? 'geekblue' : 'volcano';
+                        return (
+                            <Tag color={color} key={tag}>
+                                {tag.toUpperCase()}
+                            </Tag>
+                        );
+                    })}
+                </div>
+            }
         },
         {
             title: '教程',
             dataIndex: 'teaching',
             editable: true,
+            align:"center",
             render: (_, record) => {
                 return <a href={record.teaching}>教程链接</a>
             }
@@ -171,23 +207,39 @@ const FinishAirport = (props) => {
         {
             title: '任务类型',
             dataIndex: 'task_type',
-            editable: true
+            editable: true,
+            align:"center",
+            render:(_,record)=>{
+                return   <div className={"flex  justify-center items-center"}>
+                    {record.task_type.split(',').map((tag) => {
+                        let color = tag.length > 5 ? 'magenta' : 'purple';
+                        return (
+                            <Tag color={color} key={tag}>
+                                {tag.toUpperCase()}
+                            </Tag>
+                        );
+                    })}
+                </div>
+            }
         },
         {
-            title: '空投金额',
+            title:<Tooltip placement={"rightTop"} color={"rgba(116,112,112,0.88)"} title={"该空投在平台收集的空投中的评分"}>空投质量<InfoCircleOutlined  className={"relative  bottom-3 left-2"}/></Tooltip>,
+            dataIndex: 'weight',
+            align:"center",
+            render:(_,record)=>{
+                return (
+                    <Star number={record.weight}/>
+                )
+            }
+        },
+        {
+            title: <Tooltip placement={"rightTop"} color={"rgba(116,112,112,0.88)"} title={"平台用户获取该空投的总数量"}>空投数量<InfoCircleOutlined  className={"relative  bottom-3 left-2"}/></Tooltip>,
             dataIndex: "balance",
-            editable: true,
+            align:"center",
             render: (_, record) => {
                 return(
-                    record.balance ? <div >
-                        <InputNumber
-                            defaultValue={record.balance}
-                            className={"max-w-20 max-h-8  "}
-                            min="0"
-                            step="0.00000000000001"
-                            onChange={(event) => { console.log("change obtain balance",event) }}
-                            stringMode 
-                        />
+                    record.balance ? <div className={"flex w-full h-full justify-center items-center "} style={{fontSize:"12px"}}>
+                            <Statistic  value={record.balance} />
                     </div>
                     : <Skeleton paragraph={{
                         rows: 1,
@@ -198,6 +250,8 @@ const FinishAirport = (props) => {
         {
             title: '进展',
             dataIndex: 'operation',
+            align:"center",
+            hidden:!isAdmin,
             render: (_, record) =>
                 dataSource.length >= 1 ? (
                     isAdmin && <div className={"w-full justify-center items-center flex-col"}>

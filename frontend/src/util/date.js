@@ -67,4 +67,18 @@ const SubDays=(now,days)=>{
     return moment(preData).format("YYYYMMDD");
 }
 
-export {DayBeforeExceedOneDay,DayAfterExceedOneDay,AddDays,SubDays,visibleDate};
+function isToday(timestamp) {
+    const date = new Date(timestamp);
+
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+    const currentDate = today.getDate();
+
+    const timestampYear = date.getFullYear();
+    const timestampMonth = date.getMonth();
+    const timestampDate = date.getDate();
+    return currentYear === timestampYear && currentMonth === timestampMonth && currentDate === timestampDate;
+}
+
+export {DayBeforeExceedOneDay,DayAfterExceedOneDay,AddDays,SubDays,visibleDate,isToday};
