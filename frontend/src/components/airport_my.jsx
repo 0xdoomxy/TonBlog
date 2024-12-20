@@ -4,6 +4,7 @@ import {motion} from 'framer-motion';
 import {CheckCircleOutlined, ExclamationCircleOutlined, InfoCircleOutlined, SyncOutlined} from "@ant-design/icons";
 import {Star} from "./index.js";
 import {isToday} from "../util/date.js";
+import { toast } from 'react-toastify';
 
 const EditableContext = React.createContext(null);
 const EditableRow = ({index, ...props}) => {
@@ -144,6 +145,9 @@ const MyAirport = (props) => {
             // balance: 1000
         },
     ]);
+    const findDataByPage = (page,pageSize)=>{
+
+    }
     //TODO
     const handleDelete = (key) => {
         const newData = dataSource.filter((item) => item.key !== key);
@@ -151,6 +155,22 @@ const MyAirport = (props) => {
     };
     //TODO
     const handleComplete = (key) => {
+        const newData = dataSource.filter((item) => item.key !== key);
+        setDataSource(newData);
+    }
+    //TODO
+    const handleTodayFinish =(key)=>{
+        const updateItem = undefined;
+        dataSource.forEach((item)=>{
+            if (item.key === key){
+                updateItem = item;
+            }
+        });
+        if (updateItem === null){
+            toast.error("删除数据为空");
+            return;
+        }
+
         const newData = dataSource.filter((item) => item.key !== key);
         setDataSource(newData);
     }
@@ -403,6 +423,7 @@ const MyAirport = (props) => {
         <div className={"w-full h-full flex justify-center items-center flex-col"}>
             <div>
                 <Table
+                  key={"my"}
                     tableLayout={"auto"}
                     components={components}
                     rowClassName={() => 'editable-row'}

@@ -6,6 +6,7 @@ import (
 	"blog/middleware/cors"
 	"blog/middleware/jwt"
 	"blog/middleware/metrics"
+	"blog/middleware/whitepaper"
 	"fmt"
 	"time"
 
@@ -46,7 +47,21 @@ func main() {
 	bindCommentRoutes(engine)
 	bindUserRoutes(engine)
 	bindTagRoutes(engine)
+	bindAirportRoutes(engine)
 	engine.Run(":8080")
+}
+func bindAirportRoutes(engine *gin.Engine) {
+	route := engine.Group("/airport")
+	route.GET("/findrunning", jwt.NewVerifyMiddleware(), func(ctx *gin.Context) {
+		controller.GetAirport().FindRunningAirport(ctx)
+	})
+	route.GET("/findfinish", jwt.NewVerifyMiddleware(), func(ctx *gin.Context) {
+		controller.GetAirport().FindFinishAirport(ctx)
+	})
+	route.POST("/create", jwt.NewVerifyMiddleware(), whitepaper.WhitepaperMiddleware(), func(ctx *gin.Context) {
+		controller.GetAirport().CreateAirport(ctx)
+	})
+
 }
 
 func bindArticleRoutes(engine *gin.Engine) {

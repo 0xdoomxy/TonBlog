@@ -81,6 +81,17 @@ const CommentClient = {
    CreateComment:(comment)=>requests.post(`/comment/create`,comment),
    DeleteComment:(id,articleid)=>requests.get(`/comment/delete?articleid=${encode(articleid)}&id=${encode(id)}`)
 }
+const AirportClient = {
+  UpdateAirportByUpdateTime:(id)=>requests.get(`/airport/update?type=${encode("update_time")}&id=${encode(id)}`),
+  UpdateAirportByAddressBalance:(id)=>requests.get(`/airport/update?type=${encode("address_balance")}&id=${encode(id)}`),
+  UpdateAirportByFinishTime:(id)=>requests.get(`/airport/update?type=${encode("finish_time")}&id=${encode(id)}`),
+  AddAirportIntoAddress:(id)=>requests.get(`/airport/update?type=${encode("add_into_address")}&id=${encode(id)}`),
+  AddAirport:(airport)=>requests.post(`/airport/create`,airport),
+  DeleteAirport:(id)=>requests.get(`/airport/delete?id=${encode(id)}`),
+  FindAirportByAddress:(page,pageSize)=>requests.get(`/airport/findbyaddress?page=${encode(page)}&pagesize=${encode(pageSize)}`),
+  FindRunningAirport:(page,pageSize)=>requests.get(`/airport/findrunning?page=${encode(page)}&pagesize=${encode(pageSize)}`),
+  FindFinishAirport:(page,pageSize)=>requests.get(`/airport/findfinish?page=${encode(page)}&pagesize=${encode(pageSize)}`)
+}
 const ArticleClient = {
     ImageDownload:(file)=>requests.get(`/article/image/download?filename=${encode(file)}`),
     ImageUpload:(file)=>requests.post(`/article/image/upload`,file),
@@ -112,5 +123,5 @@ export {
     LikeClient,
     UserClient,
     SetAuthorizetion,
-    Authorization,CommentClient
+    Authorization,CommentClient,AirportClient
 }

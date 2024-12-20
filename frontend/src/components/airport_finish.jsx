@@ -4,6 +4,9 @@ import {Skeleton, Form, Input, Progress, Table, InputNumber, Tag, Tooltip, Stati
 import { motion } from 'framer-motion';
 import {ExclamationCircleOutlined, InfoCircleOutlined} from "@ant-design/icons";
 import {Star} from "./index.js";
+import { AirportClient } from '../agent/agent.js';
+import Constants from '../util/constants.js';
+import { toast } from 'react-toastify';
 const EditableContext = React.createContext(null);
 const EditableRow = ({ index, ...props }) => {
     const [form] = Form.useForm();
@@ -83,34 +86,19 @@ const EditableCell = ({
 };
 const FinishAirport = (props) => {
     const { isAdmin } = props;
-    const [dataSource, setDataSource] = useState([
-        {
-            key: '0',
-            name: 'Edward King 0',
-            start_time: Date.now() - 1000 * 1000 * 60 * 24,
-            end_time: Date.now() - 500 * 1000 * 60 * 24,
-            final_time: Date.now() + 2000 * 1000 * 60 * 24,
-            address: "www.baidu.com",
-            tag: "区块链,AI",
-            financing_balance: "3000$",
-            financing_from: "a16z,binance",
-            task_type: "拉人头,交互",
-            balance: 1000
-        },
-        {
-            key: '1',
-            name: 'Edward King 0',
-            start_time: Date.now() - 1000 * 60 * 24,
-            end_time: Date.now() - 250 * 1000 * 60 * 24,
-            final_time:Date.now() + 2000 * 1000 * 60 * 24,
-            address: "www.baidu.com",
-            tag: "区块链,AI",
-            financing_balance: "3000$",
-            financing_from: "a16z,binance",
-            task_type: "拉人头,交互",
-            // balance: 1000
-        },
-    ]);
+    const [dataSource, setDataSource] = useState(null);
+    useEffect(()=>{
+            findFinishAirportByPage(1,Constants.PageSize)
+    },[])
+    const findFinishAirportByPage = (page,pagesize)=>{
+        AirportClient.FindFinishAirport(page,pagesize).then((data)=>{
+            if (data === undefined || data === null) {
+                return;
+            }
+
+            setDataSource(data);
+        })
+    }
     //TODO
     const handleDelete = (key) => {
         const newData = dataSource.filter((item) => item.key !== key);
@@ -130,6 +118,7 @@ const FinishAirport = (props) => {
                 let final = record.final_time;
                 let now = Date.now();
                 let p = Math.floor((now - end) / (final - end) * 100);
+        
                 return (
                     <Progress format={(percent)=>`领取进度: ${percent}%`} percent={p} percentPosition={{ align: 'center', type: 'outer' }} size={[100, 30]}/>
                 );
@@ -234,12 +223,12 @@ const FinishAirport = (props) => {
         },
         {
             title: <Tooltip placement={"rightTop"} color={"rgba(116,112,112,0.88)"} title={"平台用户获取该空投的总数量"}>空投数量<InfoCircleOutlined  className={"relative  bottom-3 left-2"}/></Tooltip>,
-            dataIndex: "balance",
+            dataIndex: "airport_balance",
             align:"center",
             render: (_, record) => {
                 return(
-                    record.balance ? <div className={"flex w-full h-full justify-center items-center "} style={{fontSize:"12px"}}>
-                            <Statistic  value={record.balance} />
+                    record.airport_balance ? <div className={"flex w-full h-full justify-center items-center "} style={{fontSize:"12px"}}>
+                            <Statistic  value={record.airport_balance} />
                     </div>
                     : <Skeleton paragraph={{
                         rows: 1,
@@ -309,6 +298,7 @@ const FinishAirport = (props) => {
         <div className={"w-full h-full flex justify-center items-center flex-col"}>
             <div>
                 <Table
+                  key={"finish"}
                     tableLayout={"auto"}
                     components={components}
                     rowClassName={() => 'editable-row'}

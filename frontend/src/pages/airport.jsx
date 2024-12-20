@@ -6,7 +6,7 @@ import {ClockCircleFilled, PlusSquareFilled, WalletFilled} from "@ant-design/ico
 
 
 const AirPort = () => {
-    const [isAdmin, setIsAdmin] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(true);
     const [tabs,setTabs] = useState( [
         {icon:<WalletFilled height={10} width={10}/>,label:"我的空投",content: <MyAirport isAdmin={isAdmin}/>},
         {icon:<PlusSquareFilled  height={10} width={10}/>, label: "发现空投",content:<RunningAirport isAdmin={isAdmin}/>},
