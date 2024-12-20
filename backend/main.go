@@ -61,7 +61,12 @@ func bindAirportRoutes(engine *gin.Engine) {
 	route.POST("/create", jwt.NewVerifyMiddleware(), whitepaper.WhitepaperMiddleware(), func(ctx *gin.Context) {
 		controller.GetAirport().CreateAirport(ctx)
 	})
-
+	route.GET("/delete", jwt.NewVerifyMiddleware(), whitepaper.WhitepaperMiddleware(), func(ctx *gin.Context) {
+		controller.GetAirport().DeleteAirport(ctx)
+	})
+	route.GET("/update", jwt.NewVerifyMiddleware(), func(context *gin.Context) {
+		controller.GetAirport().UpdateAirport(context)
+	})
 }
 
 func bindArticleRoutes(engine *gin.Engine) {

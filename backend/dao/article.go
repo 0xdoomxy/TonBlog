@@ -124,7 +124,7 @@ func (a *article) UpdateArticle(ctx context.Context, article *model.Article) (er
 	}
 	err = db.GetMysql().WithContext(ctx).Model(&model.Article{}).Where("id = ?", article.ID).Updates(article).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			cache.Set(ctx, key, nil, time.Millisecond*time.Duration(a.cachems))
 		}
 		logrus.Errorf("update article %v from mysql failed:%s", article, err.Error())

@@ -72,7 +72,20 @@ func (a *airport) FindRunningAirport(c *gin.Context) {
 	}
 	c.JSON(200, res)
 }
+func (a *airport) DeleteAirport(c *gin.Context) {
 
+	airportId, err := strconv.ParseUint(c.Query("id"), 10, 64)
+	if err != nil || airportId <= 0 {
+		c.JSON(200, utils.NewFailedResponse("参数出错"))
+		return
+	}
+	err = service.GetAirport().DeleteAirport(c, uint(airportId))
+	if err != nil {
+		c.JSON(200, utils.NewFailedResponse("删除失败"))
+		return
+	}
+	return
+}
 func (a *airport) CreateAirport(c *gin.Context) {
 	var airport = new(model.Airport)
 	err := c.Bind(airport)
@@ -104,4 +117,53 @@ func (a *airport) CreateAirport(c *gin.Context) {
 		c.JSON(200, utils.NewFailedResponse("创建失败"))
 		return
 	}
+}
+
+func (a *airport) UpdateAirport(c *gin.Context) {
+	var ok bool
+	var addressAny any
+	addressAny, ok = c.Get("address")
+	if !ok {
+		c.JSON(200, utils.NewFailedResponse("参数出错"))
+		return
+	}
+	var address string
+	if address, ok = addressAny.(string); !ok {
+		c.JSON(200, utils.NewFailedResponse("参数出错"))
+		return
+	}
+	updateType := service.UpdateSchema(c.Query("type"))
+	if updateType == "" {
+		c.JSON(200, utils.NewFailedResponse("参数出错"))
+		return
+	}
+	var err error
+	var airportId uint64
+	airportId, err = strconv.ParseUint(c.Query("id"), 10, 64)
+	if err != nil {
+		c.JSON(200, utils.NewFailedResponse("参数出错"))
+		return
+	}
+	params := &service.UpdateAirportTemplate{
+		Schema:              updateType,
+		AirportRelationship: &model.AirportRelationship{AirportId: uint(airportId), UserAddress: address},
+	}
+	var balance float64
+	switch updateType {
+	case service.UserAddressBalance:
+		balance, err = strconv.ParseFloat(c.Query("balance"), 64)
+		if err != nil {
+			c.JSON(200, utils.NewFailedResponse("参数出错"))
+			return
+		}
+		params.AirportRelationship.Balance = balance
+	}
+	err = service.GetAirport().UpdateAirport(c, params)
+	if err != nil {
+		if err != nil {
+			c.JSON(200, utils.NewFailedResponse("修改失败"))
+			return
+		}
+	}
+	return
 }

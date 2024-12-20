@@ -114,11 +114,11 @@ const FinishAirport = (props) => {
             title: '进度',
             align:"center",
             render: (_, record) => {
-                let end = record.end_time;
-                let final = record.final_time;
+                let end = new Date(record.end_time);
+                let final = new Date(record.final_time);
                 let now = Date.now();
                 let p = Math.floor((now - end) / (final - end) * 100);
-        
+                p = Math.min(p, 100);
                 return (
                     <Progress format={(percent)=>`领取进度: ${percent}%`} percent={p} percentPosition={{ align: 'center', type: 'outer' }} size={[100, 30]}/>
                 );
@@ -301,6 +301,7 @@ const FinishAirport = (props) => {
                   key={"finish"}
                     tableLayout={"auto"}
                     components={components}
+                     sticky
                     rowClassName={() => 'editable-row'}
                     bordered
                     className={"w-full flex justify-center items-center h-full"}

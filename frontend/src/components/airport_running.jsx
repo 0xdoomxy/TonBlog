@@ -1,9 +1,12 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Form, Input, Modal, Progress, Table } from 'antd';
-import { motion } from 'framer-motion';
-import { AirportClient } from '../agent/agent';
+import React, {useContext, useEffect, useRef, useState} from 'react';
+import {Form, Input, Modal, Progress, Table} from 'antd';
+import {motion} from 'framer-motion';
+import {AirportClient} from '../agent/agent';
+import {toast} from "react-toastify";
+import Constants from "../util/constants.js";
+
 const EditableContext = React.createContext(null);
-const EditableRow = ({ index, ...props }) => {
+const EditableRow = ({index, ...props}) => {
     const [form] = Form.useForm();
     return (
         <Form form={form} component={false}>
@@ -14,14 +17,14 @@ const EditableRow = ({ index, ...props }) => {
     );
 };
 const EditableCell = ({
-    title,
-    editable,
-    children,
-    dataIndex,
-    record,
-    handleSave,
-    ...restProps
-}) => {
+                          title,
+                          editable,
+                          children,
+                          dataIndex,
+                          record,
+                          handleSave,
+                          ...restProps
+                      }) => {
     const [editing, setEditing] = useState(false);
     const inputRef = useRef(null);
     const form = useContext(EditableContext);
@@ -51,7 +54,6 @@ const EditableCell = ({
         }
     };
     let childNode = children;
-    console.log(childNode);
     if (editable) {
         childNode = editing ? (
             <Form.Item
@@ -66,7 +68,7 @@ const EditableCell = ({
                     },
                 ]}
             >
-                <Input ref={inputRef} onPressEnter={save} onBlur={save} />
+                <Input ref={inputRef} onPressEnter={save} onBlur={save}/>
             </Form.Item>
         ) : (
             <div
@@ -84,39 +86,32 @@ const EditableCell = ({
 };
 
 const RunningAirport = (props) => {
-    const { isAdmin } = props;
+    const {isAdmin} = props;
     const [dataSource, setDataSource] = useState(null);
-    useEffect(()=>{
-       
-    },[])
-    const findRunningAirport=(page,pageSize)=>{
-        AirportClient.FindRunningAirport(page,pageSize).then((data)=>{
-            if (data === undefined || data === null) {
-                return;
-            }
-            if (!data.status) {
-                let msg = data.message;
-                if (msg === undefined || msg === null) {
-                    msg = "系统出错啦";
-                }
-                toast.error(msg);
-                return;
-            }
-            if (data.data === undefined || data.data === null ) {
-                return;
-            }
+    useEffect(() => {
+            findRunningAirport(1,Constants.PageSize);
+    }, [])
+    const findRunningAirport = (page, pageSize) => {
+        AirportClient.FindRunningAirport(page, pageSize).then((data) => {
+            setDataSource(data.map((item)=>{item.key=item.id;return item}));
         })
     }
-    const handleAdd = ()=>{
+    const handleAdd = () => {
 
     }
     //TODO
-    const handleDelete = (key) => {
+    const handleDelete = (item) => {
         const newData = dataSource.filter((item) => item.key !== key);
         setDataSource(newData);
     };
+    const handleAddMyAirport =async (item) => {
+       const resp = await AirportClient.AddAirportIntoAddress(item.id)
+        console.log(resp);
+        const newData = dataSource.filter((item) => item.key !== item.key);
+        setDataSource(newData);
+    }
     //TODO
-    const handleComplete = (key) => {
+    const handleComplete = (item) => {
         const newData = dataSource.filter((item) => item.key !== key);
         setDataSource(newData);
     }
@@ -129,7 +124,7 @@ const RunningAirport = (props) => {
                 let now = Date.now();
                 let p = Math.floor((now - start) / (end - start) * 100);
                 return (
-                    <Progress percent={p} percentPosition={{ align: 'center', type: 'inner' }} size={[100, 20]} />
+                    <Progress percent={p} percentPosition={{align: 'center', type: 'inner'}} size={[100, 20]}/>
                 );
             }
         },
@@ -180,34 +175,34 @@ const RunningAirport = (props) => {
             render: (_, record) =>
                 dataSource.length >= 1 ? (
                     <div className={"w-full justify-center items-center flex-col"}>
-                        <motion.button whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            style={{ width: "80px", height: "40px" }}
-                            transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                            className={"motion-button  px-1"} title="今日完成"
-                            key={record.key}
-                            onClick={() => handleDelete(record.key)}
+                        <motion.button whileHover={{scale: 1.1}}
+                                       whileTap={{scale: 0.9}}
+                                       style={{width: "80px", height: "40px"}}
+                                       transition={{type: "spring", stiffness: 400, damping: 10}}
+                                       className={"motion-button  px-1"} title="加入计划"
+                                       key={record.key}
+                                       onClick={() => handleAddMyAirport(record)}
                         >
-                            <a>今日完成</a>
+                            <a>加入计划</a>
                         </motion.button>
                         {isAdmin &&
-                            <motion.button whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                                className={"motion-button  px-1"} title="结束空投"
-                                style={{ width: "80px", height: "40px" }}
-                                key={record.key}
-                                onClick={() => handleComplete(record.key)}>
+                            <motion.button whileHover={{scale: 1.1}}
+                                           whileTap={{scale: 0.9}}
+                                           transition={{type: "spring", stiffness: 400, damping: 10}}
+                                           className={"motion-button  px-1"} title="结束空投"
+                                           style={{width: "80px", height: "40px"}}
+                                           key={record.key}
+                                           onClick={() => handleComplete(record)}>
                                 <a>结束空投</a>
                             </motion.button>}
                         {isAdmin &&
-                            <motion.button whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                                className={"motion-button  px-1"} title="删除空投"
-                                style={{ width: "80px", height: "40px" }}
-                                key={record.key}
-                                onClick={() => handleDelete(record.key)}>
+                            <motion.button whileHover={{scale: 1.1}}
+                                           whileTap={{scale: 0.9}}
+                                           transition={{type: "spring", stiffness: 400, damping: 10}}
+                                           className={"motion-button  px-1"} title="删除空投"
+                                           style={{width: "80px", height: "40px"}}
+                                           key={record.key}
+                                           onClick={() => handleDelete(record)}>
                                 <a>删除空投</a>
                             </motion.button>}
                     </div>
@@ -248,35 +243,37 @@ const RunningAirport = (props) => {
         };
     });
     return (<>
-        <Modal></Modal>
-        <div className={"w-full h-full flex justify-center items-center flex-col"}>
-            {isAdmin && <div className={"w-full h-full"}>
-                <div className={"w-full items-center justify-start flex pb-4 pl-4"}>
-                    <motion.button
-                        className={"motion-button  flex justify-center items-center  md:text-md lg:text-xl text-white"}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                        onClick={handleAdd}
-                    >
-                        新增空投
-                    </motion.button>
+            <Modal></Modal>
+            <div className={"w-full h-full flex justify-center items-center flex-col"}>
+                {isAdmin && <div className={"w-full h-full flex justify-center items-center"}>
+                    <div className={"w-full items-center justify-start flex pb-4 pl-4"}>
+                        <motion.button
+                            className={"motion-button   flex justify-center items-center  md:text-md lg:text-xl text-white"}
+                            whileHover={{scale: 1.1}}
+                            whileTap={{scale: 0.9}}
+                            transition={{type: "spring", stiffness: 400, damping: 10}}
+                            onClick={handleAdd}
+                        >
+                            新增空投
+                        </motion.button>
+                    </div>
+                </div>
+                }
+                <div className={"w-full h-full justify-center items-center"}>
+                    <Table
+                        key={"running"}
+                        tableLayout={"auto"}
+                        components={components}
+                        rowClassName={() => 'editable-row'}
+                        bordered
+                        size={"large"}
+                        sticky
+                        className={"w-full flex justify-center items-center h-full"}
+                        dataSource={dataSource}
+                        columns={columns}
+                    />
                 </div>
             </div>
-            }
-            <div>
-                <Table
-                   key={"running"}
-                    tableLayout={"auto"}
-                    components={components}
-                    rowClassName={() => 'editable-row'}
-                    bordered
-                    className={"w-full flex justify-center items-center h-full"}
-                    dataSource={dataSource}
-                    columns={columns}
-                />
-            </div>
-        </div>
         </>
     )
 }

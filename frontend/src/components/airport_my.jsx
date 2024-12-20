@@ -424,6 +424,7 @@ const MyAirport = (props) => {
             <div>
                 <Table
                   key={"my"}
+                  sticky
                     tableLayout={"auto"}
                     components={components}
                     rowClassName={() => 'editable-row'}
